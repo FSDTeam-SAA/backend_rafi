@@ -1,4 +1,5 @@
 const express = require("express");
+const dbConnection = require("./db/dbConnection");
 const dotenv = require("dotenv").config();
 
 const app = express();
@@ -11,6 +12,7 @@ app.get("/", (req, res) => {
     });
 });
 
-app.listen(PORT, () => {
+app.listen(PORT, async() => {
+  await dbConnection();
   console.log(`Server is running on http://localhost:${PORT}`);
 });
