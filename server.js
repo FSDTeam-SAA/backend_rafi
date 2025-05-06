@@ -1,18 +1,17 @@
 const express = require("express");
-const dbConnection = require("./db/dbConnection");
 const dotenv = require("dotenv").config();
+const cors = require("cors");
+const dbConnection = require("./db/dbConnection");
+const app = require("./app");
 
-const app = express();
 const PORT = process.env.PORT || 5001;
 
-app.get("/", (req, res) => {
-  return res.status(200).json({ 
-    status: true, 
-    message: "Welcome to the server!" 
-    });
-});
+// middlewares
+app.use(express.json());
+app.use(express.urlencoded({ urlencoded: true }));
+app.use(cors({ origin: "*" }));
 
-app.listen(PORT, async() => {
+app.listen(PORT, async () => {
   await dbConnection();
   console.log(`Server is running on http://localhost:${PORT}`);
 });
