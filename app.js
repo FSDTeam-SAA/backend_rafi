@@ -7,7 +7,8 @@ const authRouter = require("./routes/auth.route");
 
 //admin route
 const youtubeVideosAdminRouter = require("./routes/youtubeVideosAdmin.route");
-
+const newsLatterRouter = require('./routes/newsLatter.route');
+const errorMiddleware = require('./middlewares/error.middlewares')
 
 // middlewares
 app.use(express.json());
@@ -27,5 +28,14 @@ app.use("/api/v1/auth", authRouter);
 
 //admin dashboard 
  app.use("/api/v1/admin/youtubeVideos", youtubeVideosAdminRouter);
+
+ // newsletter 
+ app.use("/api/v1", newsLatterRouter) 
+
+
+
+
+// Error handler middleware
+app.use(errorMiddleware)
 
 module.exports = app;
