@@ -1,9 +1,10 @@
 const Ads = require("../models/adsAdmin.model");
 const User = require("../models/user.model");
+const { uploadOnCloudinary } = require("../utils/cloudnary");
 
 exports.createAd = async (req, res) => {
     try {
-        const { adsTitle, adsContent, imageLink, tickers } = req.body;
+        const { adsTitle, adsContent, tickers } = req.body;
         // const author = req.user._id; // Assuming you have user authentication middleware
         const existingAd = await Ads.findOne({ adsTitle });
         if (existingAd) {
@@ -19,6 +20,15 @@ exports.createAd = async (req, res) => {
                 message: 'All fields are required',
             });
         }
+       let  imageLink
+        if (req.file) {
+        try {
+            const image = await uploadOnCloudinary(req.file.buffer, 'ads');
+            imageLink = image.secure_url;
+        } catch (error) {
+            throw new AppError(500, 'Error uploading image');
+        }
+    }
         // Create a new ad item       
         const ad = new Ads({
             adsTitle,
@@ -134,6 +144,15 @@ exports.updateAd = async (req, res) => {
                 message: 'All fields are required',
             });
         }
+                if (req.file) {
+        try {
+            const image = await uploadOnCloudinary(req.file.buffer, 'users');
+            existingAd.imageLink = image.secure_url;
+        } catch (error) {
+            throw new AppError(500, 'Error uploading image');
+        }
+    }
+
         // Update the ad item       
         existingAd.adsTitle = adsTitle;
         existingAd.adsContent = adsContent;
