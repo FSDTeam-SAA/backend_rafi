@@ -1,22 +1,13 @@
 const mongoose = require('mongoose');
 
-const newsAdminSchema = new mongoose.Schema({
-    newsTitle:{
-        type: String,
-    },
-    newsDescription:{
-        type: String,
-    },
-    imageLink:{
-        type: String,
-    },
-    views:{
-        type: Number,
-        default: 0  
-    },
-},{
-    timestamps: true,
-});
+const newsSchema = new mongoose.Schema({
+newsTitle: { type: String, required: true },
+newsDescription: { type: String, required: true },
+newsImage: { type: String, required: true },
+// date: { type: Date, default: Date.now },
+views: { type: Number, default: 0 },
+tickers: { type: String, required: true },
+// author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+}, { timestamps: true });
 
-const newsAdmin = mongoose.model("newsAdmin", newsAdminSchema);
-module.exports = newsAdmin;
+module.exports = mongoose.model('News', newsSchema);
