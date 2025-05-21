@@ -14,6 +14,19 @@ const adsAdminSchema = new mongoose.Schema({
         type: Boolean,
         default: false 
     },
+    views:{
+        type: Number,
+        default: 0
+    },
+    author:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        // required: true
+    },
+    tickers:{
+        type: String,
+        required: true
+    },
 },{
     timestamps: true,
 });
