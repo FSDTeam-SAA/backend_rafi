@@ -1,6 +1,7 @@
 const Ads = require("../models/adsAdmin.model");
 const User = require("../models/user.model");
 const { uploadOnCloudinary } = require("../utils/cloudnary");
+const cloudinary = require("cloudinary").v2;
 
 exports.createAd = async (req, res) => {
     try {
@@ -20,15 +21,18 @@ exports.createAd = async (req, res) => {
                 message: 'All fields are required',
             });
         }
-       let  imageLink
+        let imageLink
         if (req.file) {
-        try {
-            const image = await uploadOnCloudinary(req.file.buffer, 'ads');
-            imageLink = image.secure_url;
-        } catch (error) {
-            throw new AppError(500, 'Error uploading image');
+            try {
+                const image = await uploadOnCloudinary(req.file.buffer, 'ads');
+                imageLink = image.secure_url;
+            } catch (error) {
+                return res.status(400).json({
+                    status: false,
+                    message: 'Failed to upload image',
+                });
+            }
         }
-    }
         // Create a new ad item       
         const ad = new Ads({
             adsTitle,
@@ -95,29 +99,29 @@ exports.getAllAds = async (req, res) => {
 //getting single ad
 
 exports.getSingleAd = async (req, res) => {
-   try{
-    const adId = req.params.id;
-    const ad = await Ads.findById(adId).populate('author', 'name email');
-    if (!ad) {
-        return res.status(404).json({
-            status: false,
-            message: 'Ad not found',
+    try {
+        const adId = req.params.id;
+        const ad = await Ads.findById(adId).populate('author', 'name email');
+        if (!ad) {
+            return res.status(404).json({
+                status: false,
+                message: 'Ad not found',
+            });
+        }
+        res.status(200).json({
+            status: true,
+            message: 'Ad fetched successfully',
+            data: ad,
         });
     }
-    res.status(200).json({
-        status: true,
-        message: 'Ad fetched successfully',
-        data: ad,
-    });
-   }
     catch (error) {
-          console.error('Error fetching ad:', error);
-          return res.status(500).json({
-                status: false,
-                message: 'Error fetching ad',
-                error: error.message,
-          });
-     }
+        console.error('Error fetching ad:', error);
+        return res.status(500).json({
+            status: false,
+            message: 'Error fetching ad',
+            error: error.message,
+        });
+    }
 };
 
 
@@ -128,7 +132,7 @@ exports.getSingleAd = async (req, res) => {
 exports.updateAd = async (req, res) => {
     try {
         const adId = req.params.id;
-        const { adsTitle, adsContent, imageLink, tickers } = req.body;
+        const { adsTitle, adsContent, tickers } = req.body;
         // const author = req.user._id; // Assuming you have user authentication middleware
         const existingAd = await Ads.findById(adId);
         if (!existingAd) {
@@ -144,14 +148,18 @@ exports.updateAd = async (req, res) => {
                 message: 'All fields are required',
             });
         }
-                if (req.file) {
-        try {
-            const image = await uploadOnCloudinary(req.file.buffer, 'users');
-            existingAd.imageLink = image.secure_url;
-        } catch (error) {
-            throw new AppError(500, 'Error uploading image');
+        if (req.file) {
+            try {
+               await cloudinary.uploader.destroy(existingAd.imageLink)
+                const image = await uploadOnCloudinary(req.file.buffer, 'users');
+                existingAd.imageLink = image.secure_url;
+            } catch (error) {
+                return res.status(400).json({
+                    status: false,
+                    message: 'Failed to upload image',
+                });
+            }
         }
-    }
 
         // Update the ad item       
         existingAd.adsTitle = adsTitle;
@@ -182,14 +190,14 @@ exports.updateAd = async (req, res) => {
 //deleting ad
 
 exports.deleteAd = async (req, res) => {
-    try{
+    try {
         const adId = req.params.id;
         const ad = await Ads.findByIdAndDelete(adId);
         if (!ad) {
             return res.status(404).json({
                 status: false,
                 message: 'Ad not found',
-                data:[],
+                data: [],
             });
         }
         res.status(200).json({

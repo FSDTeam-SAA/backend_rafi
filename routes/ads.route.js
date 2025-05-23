@@ -1,7 +1,7 @@
 const express = require('express');
 const { createAd, getAllAds, getSingleAd, updateAd, deleteAd } = require("../controllers/ads.controller");
 const { protect, isAdmin } = require('../middlewares/auth.middleware');
-const { default: upload } = require('../middlewares/multer.middleware');
+const upload = require('../middlewares/multer.middleware');
 
 const router = express.Router();
 

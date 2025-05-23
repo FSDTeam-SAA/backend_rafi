@@ -1,8 +1,11 @@
-import User from "../models/user.model.js";
-import jwt from "jsonwebtoken";
-export const protect = async (req, res, next) => {
+const User = require("../models/user.model");
+const jwt = require("jsonwebtoken");
+
+exports.protect = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
-  if (!token) throw new AppError(httpStatus.NOT_FOUND, "Token not found");
+  if (!token) {
+    return res.status(401).json({ succes: false, message: "Unauthorized" });
+  }
 
   try {
     const decoded = await jwt.verify(token, process.env.JWT_ACCESS_SECRET);
@@ -17,9 +20,9 @@ export const protect = async (req, res, next) => {
   }
 };
 
-export const isAdmin = (req, res, next)=> {
+exports.isAdmin = (req, res, next) => {
   if (req.user?.role !== "admin") {
-    throw new AppError(403, "Access denied. You are not an admin.");
+    return res.status(403).json({ succes: false, message: "Access denied. You are not an admin." });
   }
   next();
 };

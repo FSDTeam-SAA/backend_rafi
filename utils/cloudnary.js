@@ -1,4 +1,4 @@
-import { v2 as cloudinary } from "cloudinary";
+const cloudinary = require("cloudinary").v2;
 
 // Cloudinary setup
 cloudinary.config({
@@ -8,7 +8,7 @@ cloudinary.config({
 });
 
 // Upload on Cloudinary method
-export const uploadOnCloudinary = (fileBuffer) => {
+exports.uploadOnCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
         const stream = cloudinary.uploader.upload_stream(
             { resource_type: "image" },
