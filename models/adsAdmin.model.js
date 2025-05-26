@@ -23,10 +23,6 @@ const adsAdminSchema = new mongoose.Schema({
         ref: "User",
         // required: true
     },
-    tickers:{
-        type: String,
-        required: true
-    },
 },{
     timestamps: true,
 });

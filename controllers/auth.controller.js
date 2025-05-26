@@ -1,5 +1,7 @@
 const apiResponse = require("quick-response");
 const User = require("../models/user.model");
+const { generateToken } = require("../utils/generateToken");
+const { createToken } = require("../utils/authToken");
 
 // register user
 const registration = async (req, res) => {
@@ -49,16 +51,29 @@ const login = async (req, res) => {
         .json(apiResponse(404, "wrong username and password"));
     }
 
-    // generate access and refresh token
-    const { accessToken, refreshToken } = await generateTokens(userFound._id);
-    const loginToken = { accessToken, refreshToken };
+   const jwtPayload = {
+        _id: userFound._id,
+        email: userFound.email,
+        role: userFound.role,
+    };
+    const accessToken = createToken(
+        jwtPayload,
+        process.env.JWT_ACCESS_SECRET ,
+        process.env.JWT_ACCESS_EXPIRES_IN ,
+    );
+
+    const refreshToken = createToken(
+        jwtPayload,
+        process.env.JWT_REFRESH_SECRET ,
+        process.env.JWT_REFRESH_EXPIRES_IN ,
+    );
 
     return res.status(200).json(
       apiResponse(200, "login succcessful", {
         user: userFound,
         token: {
-          refreshToken: refreshToken,
           accessToken: accessToken,
+          refreshToken: refreshToken,
         },
       })
     );

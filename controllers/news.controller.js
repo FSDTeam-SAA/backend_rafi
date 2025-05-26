@@ -1,6 +1,7 @@
 
 const News = require('../models/newsAdmin.model');
 const User = require('../models/user.model');
+const cloudinary = require("cloudinary").v2;
 
 
 //creating news
@@ -19,7 +20,7 @@ exports.createNews = async (req, res) => {
             );
         }
         // Validate the request body
-        if (!newsTitle || !newsDescription || !newsImage || !tickers) {
+        if (!newsTitle || !newsDescription  || !tickers) {
             return res.status(400).json(
                 {
                     status: false,
@@ -28,11 +29,23 @@ exports.createNews = async (req, res) => {
             );
 
         }
+        let newsImage
+        if (req.file) {
+            try {
+                const image = await uploadOnCloudinary(req.file.buffer, 'news');
+                newsImage = image.secure_url;
+            } catch (error) {
+                return res.status(400).json({
+                    status: false,
+                    message: 'Failed to upload image',
+                });
+            }
+        }
         // Create a new news item       
         const news = new News({
             newsTitle,
             newsDescription,
-            // newsImage,
+            newsImage,
             date,
             tickers,
             // author,
@@ -82,11 +95,13 @@ exports.getAllNews = async (req, res) => {
         return res.status(200).json({
             status: true,
             message: 'News fetched successfully',
-            currentPage: page,
-            limit,
-            totalPages: Math.ceil(totalNews / limit),
-            totalNews,
-            data: news
+            data: news,
+            meta: {
+                total: totalNews,
+                page: page,
+                limit: limit,
+                totalPages: Math.ceil(totalNews / limit),
+            }
         });
 
     } catch (error) {
@@ -138,9 +153,9 @@ exports.getSingleNews = async (req, res) => {
 exports.updateNews = async (req, res) => {
     try {
         const newsId = req.params.id;
-        const { newsTitle, newsDescription, newsImage, tickers } = req.body;
+        const { newsTitle, newsDescription, tickers } = req.body;
         // const author = req.user._id;
-       
+
         const existingNews = await News.findById(newsId);
         if (!existingNews) {
             return res.status(404).json(
@@ -151,11 +166,25 @@ exports.updateNews = async (req, res) => {
             );
         }
 
+        let newsImage
+        if (req.file) {
+            try {
+                await cloudinary.uploader.destroy(existingNews.newsImage)
+                const image = await uploadOnCloudinary(req.file.buffer, 'news');
+                existingNews.newsImage = image.secure_url;
+            } catch (error) {
+                return res.status(400).json({
+                    status: false,
+                    message: 'Failed to upload image',
+                });
+            }
+        }
+
         // Update the news item
         existingNews.newsTitle = newsTitle;
         existingNews.newsDescription = newsDescription;
         existingNews.newsImage = newsImage;
-      
+
 
 
         existingNews.tickers = tickers;
@@ -193,7 +222,8 @@ exports.deleteNews = async (req, res) => {
                 message: 'News not found',
             })
         }
-        await News.findByIdAndDelete(newsID);
+        // await cloudinary.uploader.destroy(news.newsImage);
+        await News.findByIdAndDelete({_id: newsID});
         return res.status(200).json({
             status: true,
             message: 'News deleted successfully',
@@ -209,5 +239,30 @@ exports.deleteNews = async (req, res) => {
                 error: error.message,
             }
         );
+    }
+}
+
+
+
+exports.merketNewsFromAPi = async (req, res) => {
+    try {
+        const { category = "general" } = req.query;
+        const apiResponse = await axios.get(`https://finnhub.io/api/v1/news?category=${category}&token=${process.env.FINHUB_API_KEY}`)
+        const news = apiResponse.data;
+
+        return res.status(200).json({
+            status: true,
+            message: 'News fetched successfully',
+            data: news
+        })
+    } catch (error) {
+        console.error('Error fetching news from API:', error);
+        return res.status(500).json(
+            {
+                status: false,
+                message: 'Error fetching news from API',
+                error: error.message,
+            })
+
     }
 }

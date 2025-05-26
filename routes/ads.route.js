@@ -1,12 +1,14 @@
 const express = require('express');
 const { createAd, getAllAds, getSingleAd, updateAd, deleteAd } = require("../controllers/ads.controller");
+const { protect, isAdmin } = require('../middlewares/auth.middleware');
+const upload = require('../middlewares/multer.middleware');
 
 const router = express.Router();
 
-router.post('/create-ads', createAd);
-router.get('/all-ads', getAllAds);
-router.get('/:id', getSingleAd);
-router.patch('/:id', updateAd);
-router.delete('/:id', deleteAd);
+router.post('/create-ads',protect,isAdmin,upload.single('imageLink') ,createAd);
+router.get('/all-ads',protect,isAdmin, getAllAds);
+router.get('/:id',protect,isAdmin, getSingleAd);
+router.patch('/:id',protect,isAdmin,upload.single('imageLink'), updateAd);
+router.delete('/:id',protect,isAdmin, deleteAd);
 
 module.exports = router;
