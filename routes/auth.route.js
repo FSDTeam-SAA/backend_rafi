@@ -4,6 +4,7 @@ const {
   login,
   forgotPassword,
   resetPassword,
+  changePassword,
 } = require('../controllers/auth.controller')
 
 const router = Router();
@@ -13,7 +14,7 @@ router.route("/login").post(login);
 
 router.post('/forgot-password', forgotPassword)
 router.post('/reset-password', resetPassword)
-// router.post('/auth/change-password', changePassword)
+router.post('/change-password', changePassword)
 // router.post('/auth/verify-email', verifyEmail)
 // router.post('/auth/resend-verification', resendVerificationEmail)
 

@@ -86,7 +86,7 @@ const login = async (req, res) => {
 
 // forget password
 const forgotPassword = async (req, res) => {
-  console.log("first")
+  console.log('first')
   try {
     const { email } = req.body
     const user = await User.findOne({ email })
@@ -220,4 +220,53 @@ const resetPassword = async (req, res) => {
   }
 }
 
-module.exports = { registration, login, forgotPassword, resetPassword }
+// change password
+const changePassword = async (req, res) => {
+  try {
+    const { userId, oldPassword, newPassword } = req.body
+
+    if (!newPassword || newPassword.trim() === '') {
+      return res
+        .status(400)
+        .json({ success: false, message: 'New password cannot be empty!' })
+    }
+
+    const user = await User.findById(userId)
+    if (!user) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'User not found!' })
+    }
+
+    const match = await bcrypt.compare(oldPassword, user.password)
+    if (!match) {
+      return res.status(400).json({
+        success: false,
+        message: 'Old password is incorrect!',
+      })
+    }
+
+    const hash = await bcrypt.hash(newPassword, 10)
+    user.password = hash
+
+    await user.save()
+
+    res
+      .status(200)
+      .json({ success: true, message: 'Password has been changed' })
+  } catch (error) {
+    console.error(error)
+    res
+      .status(500)
+      .json({ success: false, message: 'Failed to change password' })
+  }
+}
+
+
+module.exports = {
+  registration,
+  login,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+}
