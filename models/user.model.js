@@ -28,9 +28,16 @@ const userSchema = mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "user"],
+      enum: ["admin", "user","influencer"],
       default: "user",
     },
+    address:{
+      type: String,
+    },
+    followers: {
+      type: Number,
+      default: 0
+    }
   },
   {
     timestamps: true,

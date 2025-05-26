@@ -29,7 +29,7 @@ const createYoutubeVideo = async (req, res) => {
 
 const updatePublishStatus = async (req, res) => {
     try {
-        const { youtubeVideoID } = req.params;
+        const { id } = req.params;
         const { publish } = req.body;
 
         if (!publish) {
@@ -67,7 +67,7 @@ const updatePublishStatus = async (req, res) => {
 
 const updateYoutubeVideo = async (req, res) => {
     try {
-        const { youtubeVideoID } = req.params;
+        const { id } = req.params;
         const { videoTitle, videoLink } = req.body;
 
         if (!videoTitle && !videoLink) {
@@ -82,7 +82,7 @@ const updateYoutubeVideo = async (req, res) => {
         if (videoLink) updateFields.videoLink = videoLink;
 
         const youtubeVideo = await youtubeVideos.findByIdAndUpdate(
-            youtubeVideoID,
+            id,
             updateFields,
             { new: true }
         );
@@ -140,9 +140,9 @@ const getAllYoutubeVideos = async (req, res) => {
 
 const getSpecificYoutubeVideo = async (req, res) => {
     try {
-        const { youtubeVideoID } = req.params;
+        const { id } = req.params;
 
-        const youtubeVideo = await youtubeVideos.findById(youtubeVideoID);
+        const youtubeVideo = await youtubeVideos.findById(id);
 
         if (!youtubeVideo) {
             return res.status(404).json({
@@ -166,9 +166,9 @@ const getSpecificYoutubeVideo = async (req, res) => {
 
 const deleteYoutubeVideo = async (req, res) => {
     try {
-        const { youtubeVideoID } = req.params;
+        const { id } = req.params;
 
-        const youtubeVideo = await youtubeVideos.findByIdAndDelete(youtubeVideoID);
+        const youtubeVideo = await youtubeVideos.findByIdAndDelete(id);
 
         if (!youtubeVideo) {
             return res.status(404).json({

@@ -1,21 +1,22 @@
-const Ads = require("../models/adsAdmin.model");
+
+const blogsAdmin = require("../models/blogsAdmin.model");
 const User = require("../models/user.model");
 const { uploadOnCloudinary } = require("../utils/cloudnary");
 const cloudinary = require("cloudinary").v2;
 
-exports.createAd = async (req, res) => {
+exports.createblog = async (req, res) => {
     try {
-        const { adsTitle, adsContent, } = req.body;
+        const { blogTitle, blogDescription } = req.body;
         // const author = req.user._id; // Assuming you have user authentication middleware
-        const existingAd = await Ads.findOne({ adsTitle });
-        if (existingAd) {
-            return res.status(400).json({
-                status: false,
-                message: 'Ad with this title already exists',
-            });
-        }
+        // const existingAd = await blogsAdmin.findOne({ blogTitle });
+        // if (existingAd) {
+        //     return res.status(400).json({
+        //         status: false,
+        //         message: 'blog with this title already exists',
+        //     });
+        // }
         // Validate the request body
-        if (!adsTitle || !adsContent) {
+        if (!blogTitle || !blogDescription) {
             return res.status(400).json({
                 status: false,
                 message: 'All fields are required',
@@ -24,7 +25,7 @@ exports.createAd = async (req, res) => {
         let imageLink
         if (req.file) {
             try {
-                const image = await uploadOnCloudinary(req.file.buffer, 'ads');
+                const image = await uploadOnCloudinary(req.file.buffer, 'blog');
                 imageLink = image.secure_url;
             } catch (error) {
                 return res.status(400).json({
@@ -34,24 +35,24 @@ exports.createAd = async (req, res) => {
             }
         }
         // Create a new ad item       
-        const ad = new Ads({
-            adsTitle,
-            adsContent,
+        const blog = new blogsAdmin({
+            blogTitle,
+            blogDescription,
             imageLink,
             // author,
         });
-        await ad.save();
+        await blog.save();
         return res.status(201).json({
             status: true,
-            message: 'Ad created successfully',
-            data: ad,
+            message: 'blog created successfully',
+            data: blog,
         });
     }
     catch (error) {
-        console.error('Error creating ad:', error);
+        console.error('Error creating blog:', error);
         return res.status(500).json({
             status: false,
-            message: 'Error creating ad',
+            message: 'Error creating blog',
             error: error.message,
         });
     }
@@ -59,34 +60,34 @@ exports.createAd = async (req, res) => {
 
 //_______________________________________
 
-//getting all ads
+//getting all blog
 
-exports.getAllAds = async (req, res) => {
+exports.getAllblog = async (req, res) => {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
     const search = req.query.search || '';
     const filter = {
         $or: [
-            { adsTitle: { $regex: search, $options: 'i' } },
+            { blogTitle: { $regex: search, $options: 'i' } },
         ]
     }
-    const ads = await Ads.find(filter).sort({ createdAt: -1 }).populate('author', 'name email').skip(skip).limit(limit);
-    const totalAds = await Ads.countDocuments(filter);
-    const totalPages = Math.ceil(totalAds / limit);
-    if (ads.length === 0) {
+    const blog = await blogsAdmin.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit);
+    const totalblog = await blogsAdmin.countDocuments(filter);
+    const totalPages = Math.ceil(totalblog / limit);
+    if (blog.length === 0) {
         return res.status(404).json({
             status: false,
-            message: 'No ads found',
+            message: 'No blog found',
         });
     }
 
     res.status(200).json({
         status: true,
-        message: 'Ads fetched successfully',
-        data: ads,
+        message: 'blog fetched successfully',
+        data: blog,
         meta: {
-            total: totalAds,
+            total: totalblog,
             page: page,
             limit: limit,
             totalPages: totalPages,
@@ -98,27 +99,27 @@ exports.getAllAds = async (req, res) => {
 
 //getting single ad
 
-exports.getSingleAd = async (req, res) => {
+exports.getSingleblog = async (req, res) => {
     try {
-        const adId = req.params.id;
-        const ad = await Ads.findById(adId).populate('author', 'name email');
-        if (!ad) {
+        const id = req.params.id;
+        const blog = await blogsAdmin.findById(id);
+        if (!blog) {
             return res.status(404).json({
                 status: false,
-                message: 'Ad not found',
+                message: 'blog not found',
             });
         }
         res.status(200).json({
             status: true,
-            message: 'Ad fetched successfully',
-            data: ad,
+            message: 'blog fetched successfully',
+            data: blog,
         });
     }
     catch (error) {
-        console.error('Error fetching ad:', error);
+        console.error('Error fetching blog:', error);
         return res.status(500).json({
             status: false,
-            message: 'Error fetching ad',
+            message: 'Error fetching blog',
             error: error.message,
         });
     }
@@ -129,20 +130,20 @@ exports.getSingleAd = async (req, res) => {
 
 //updating ad
 
-exports.updateAd = async (req, res) => {
+exports.updateblog = async (req, res) => {
     try {
-        const adId = req.params.id;
-        const { adsTitle, adsContent } = req.body;
+        const id = req.params.id;
+        const { blogTitle, blogDescription } = req.body;
         // const author = req.user._id; // Assuming you have user authentication middleware
-        const existingAd = await Ads.findById(adId);
+        const existingAd = await blogsAdmin.findById(id);
         if (!existingAd) {
             return res.status(404).json({
                 status: false,
-                message: 'Ad not found',
+                message: 'blog not found',
             });
         }
         // Validate the request body
-        if (!adsTitle || !adsContent ) {
+        if (!blogTitle || !blogDescription) {
             return res.status(400).json({
                 status: false,
                 message: 'All fields are required',
@@ -151,7 +152,7 @@ exports.updateAd = async (req, res) => {
         if (req.file) {
             try {
                 await cloudinary.uploader.destroy(existingAd.imageLink)
-                const image = await uploadOnCloudinary(req.file.buffer, 'ads');
+                const image = await uploadOnCloudinary(req.file.buffer, 'blog');
                 existingAd.imageLink = image.secure_url;
             } catch (error) {
                 return res.status(400).json({
@@ -162,22 +163,22 @@ exports.updateAd = async (req, res) => {
         }
 
         // Update the ad item       
-        existingAd.adsTitle = adsTitle;
-        existingAd.adsContent = adsContent;
+        existingAd.blogTitle = blogTitle;
+        existingAd.blogDescription = blogDescription;
         // existingAd.author = author;
 
         await existingAd.save();
         return res.status(200).json({
             status: true,
-            message: 'Ad updated successfully',
+            message: 'blog updated successfully',
             data: existingAd,
         });
     }
     catch (error) {
-        console.error('Error updating ad:', error);
+        console.error('Error updating blog:', error);
         return res.status(500).json({
             status: false,
-            message: 'Error updating ad',
+            message: 'Error updating blog',
             error: error.message,
         });
     }
@@ -187,28 +188,28 @@ exports.updateAd = async (req, res) => {
 
 //deleting ad
 
-exports.deleteAd = async (req, res) => {
+exports.deleteblog = async (req, res) => {
     try {
-        const adId = req.params.id;
-        const ad = await Ads.findByIdAndDelete(adId);
-        if (!ad) {
+        const id = req.params.id;
+        const blog = await blogsAdmin.findByIdAndDelete(id);
+        if (!blog) {
             return res.status(404).json({
                 status: false,
-                message: 'Ad not found',
+                message: 'blog not found',
                 data: "",
             });
         }
         res.status(200).json({
             status: true,
-            message: 'Ad deleted successfully',
+            message: 'blog deleted successfully',
             data: "",
         });
     }
     catch (error) {
-        console.error('Error deleting ad:', error);
+        console.error('Error deleting blog:', error);
         return res.status(500).json({
             status: false,
-            message: 'Error deleting ad',
+            message: 'Error deleting blog',
             error: error.message,
         });
     }

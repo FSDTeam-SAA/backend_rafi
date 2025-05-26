@@ -20,7 +20,7 @@ exports.createNews = async (req, res) => {
             );
         }
         // Validate the request body
-        if (!newsTitle || !newsDescription || !newsImage || !tickers) {
+        if (!newsTitle || !newsDescription  || !tickers) {
             return res.status(400).json(
                 {
                     status: false,
@@ -95,11 +95,13 @@ exports.getAllNews = async (req, res) => {
         return res.status(200).json({
             status: true,
             message: 'News fetched successfully',
-            currentPage: page,
-            limit,
-            totalPages: Math.ceil(totalNews / limit),
-            totalNews,
-            data: news
+            data: news,
+            meta: {
+                total: totalNews,
+                page: page,
+                limit: limit,
+                totalPages: Math.ceil(totalNews / limit),
+            }
         });
 
     } catch (error) {
@@ -220,8 +222,8 @@ exports.deleteNews = async (req, res) => {
                 message: 'News not found',
             })
         }
-        await cloudinary.uploader.destroy(news.newsImage);
-        await News.findByIdAndDelete(newsID);
+        // await cloudinary.uploader.destroy(news.newsImage);
+        await News.findByIdAndDelete({_id: newsID});
         return res.status(200).json({
             status: true,
             message: 'News deleted successfully',

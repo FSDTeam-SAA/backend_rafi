@@ -11,12 +11,13 @@ exports.protect = async (req, res, next) => {
     const decoded = await jwt.verify(token, process.env.JWT_ACCESS_SECRET);
     // console.log(decoded)
     const user = await User.findById(decoded._id)
-    if (user && await User.isOTPVerified(user._id)) {
+    if (user) {
       req.user = user;
     }
     next();
   } catch (err) {
-    throw new AppError(401, "Invalid token");
+    console.log( err.message )
+    return res.status(401).json({ succes: false, message: "Unauthorized" });
   }
 };
 
