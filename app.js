@@ -20,6 +20,7 @@ const adsAdminRouter = require("./routes/ads.route");
 const newsRouter = require("./routes/news.route");
 const blogRouter = require("./routes/blog.route");
 const influencerRouter = require("./routes/influencer.route");
+const stocksAdminRouter = require("./routes/stocks.route");
 
 
 // middlewares
@@ -55,6 +56,16 @@ app.use("/api/v1/admin/blog", blogRouter);
 
 //influencer
 app.use("/api/v1/admin/influencer", influencerRouter);
+
+
+
+
+
+
+//stocks
+app.use("/api/v1/stocks", stocksAdminRouter);
+
+
 
 
 //Configure the Socket Event and handle the connection
