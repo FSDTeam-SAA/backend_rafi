@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/user.model');
 
 
 
@@ -18,3 +19,4 @@ exports.verifyToken =(
 )=> {
   return jwt.verify(token, secret)
 };
+

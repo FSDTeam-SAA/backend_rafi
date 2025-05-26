@@ -46,7 +46,7 @@ app.use("/api/v1/admin/youtubeVideos", youtubeVideosAdminRouter);
 app.use("/api/v1", newsLatterRouter)
 
 // ads
-app.use("/api/v1/admin/ads", adsAdminRouter);
+app.use('/api/v1/admin/ads', adsAdminRouter)
 
 //news
 app.use("/api/v1/admin/news", newsRouter);
