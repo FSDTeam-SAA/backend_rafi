@@ -1,4 +1,4 @@
-const SubscriptionPlan = require('../models/subscriptionPlanModel')
+const SubscriptionPlan = require('../models/subscriptionPlan.models')
 
 // Create a new subscription plan
 exports.createSubscriptionPlan = async (req, res) => {
