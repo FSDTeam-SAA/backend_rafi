@@ -71,7 +71,7 @@ const login = async (req, res) => {
     )
 
     return res.status(200).json(
-      apiResponse(200, 'login succcessful', {
+      apiResponse(200, 'login successful', {
         user: userFound,
         token: {
           accessToken: accessToken,
@@ -86,7 +86,6 @@ const login = async (req, res) => {
 
 // forget password
 const forgotPassword = async (req, res) => {
-  console.log('first')
   try {
     const { email } = req.body
     const user = await User.findOne({ email })
