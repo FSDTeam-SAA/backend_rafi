@@ -213,3 +213,41 @@ exports.deleteAd = async (req, res) => {
         });
     }
 }
+
+const updatePublishStatus = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { publish } = req.body;
+
+        if (publish !== true && publish !== false) {
+            return res.status(400).json({
+                status: false,
+                message: "Please provide a publish status.",
+            });
+        }
+
+        const youtubeVideo = await Ads.findByIdAndUpdate(
+            id,
+            { publish },
+            { new: true }
+        );
+
+        if (!youtubeVideo) {
+            return res.status(404).json({
+                status: false,
+                message: "Ads not found.",
+            });
+        }
+
+        return res.status(200).json({
+            status: true,
+            message: "ads publish status updated successfully.",
+            data: youtubeVideo,
+        });
+    } catch (error) {
+        return res.status(500).json({
+            status: false,
+            message: error.message,
+        });
+    }
+}; 
