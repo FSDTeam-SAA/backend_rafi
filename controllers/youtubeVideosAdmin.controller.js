@@ -32,7 +32,7 @@ const updatePublishStatus = async (req, res) => {
         const { id } = req.params;
         const { publish } = req.body;
 
-        if (!publish) {
+        if (publish !== true && publish !== false) {
             return res.status(400).json({
                 status: false,
                 message: "Please provide a publish status.",

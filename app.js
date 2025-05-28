@@ -21,7 +21,12 @@ const newsRouter = require("./routes/news.route");
 const blogRouter = require("./routes/blog.route");
 const influencerRouter = require("./routes/influencer.route");
 const stocksAdminRouter = require("./routes/stocks.route");
+
 const subscriptionRouter = require("./routes/subscriptionPlan.route");
+
+const portfolioRoutes = require("./routes/protfolio.route");
+
+
 
 // middlewares
 app.use(express.json());
@@ -65,6 +70,9 @@ app.use("/api/v1", subscriptionRouter)
 
 //stocks
 app.use("/api/v1/stocks", stocksAdminRouter);
+
+//smart Protfolio
+app.use('/api/v1', portfolioRoutes);
 
 
 
