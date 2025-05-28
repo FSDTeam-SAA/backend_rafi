@@ -1,12 +1,27 @@
 const SubscriptionPlan = require('../models/subscriptionPlan.models')
 
+// Helper: Consistent response formatter
+const sendResponse = (res, status, success, message, data = null) => {
+  res.status(status).json({
+    success,
+    message,
+    data,
+  })
+}
+
 // Create a new subscription plan
 exports.createSubscriptionPlan = async (req, res) => {
   try {
     const newPlan = await SubscriptionPlan.create(req.body)
-    res.status(201).json({ success: true,message: "Subscription plan created successfully!", data: newPlan })
+    sendResponse(
+      res,
+      201,
+      true,
+      'Subscription plan created successfully!',
+      newPlan
+    )
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message })
+    sendResponse(res, 400, false, err.message)
   }
 }
 
@@ -14,22 +29,28 @@ exports.createSubscriptionPlan = async (req, res) => {
 exports.getAllSubscriptionPlans = async (req, res) => {
   try {
     const plans = await SubscriptionPlan.find()
-    res.status(200).json({ success: true,message: "All subscription plans!", data: plans })
+    sendResponse(res, 200, true, 'All subscription plans retrieved!', plans)
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message })
+    sendResponse(res, 500, false, 'Failed to fetch subscription plans')
   }
 }
 
-// Get a single subscription plan
+// Get a single subscription plan by ID
 exports.getSubscriptionPlan = async (req, res) => {
   try {
     const plan = await SubscriptionPlan.findById(req.params.id)
     if (!plan) {
-      return res.status(404).json({ success: false, message: 'Plan not found' })
+      return sendResponse(res, 404, false, 'Subscription plan not found')
     }
-    res.status(200).json({ success: true, data: plan })
+    sendResponse(
+      res,
+      200,
+      true,
+      'Subscription plan retrieved successfully!',
+      plan
+    )
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message })
+    sendResponse(res, 400, false, 'Invalid subscription plan ID')
   }
 }
 
@@ -42,11 +63,17 @@ exports.updateSubscriptionPlan = async (req, res) => {
       { new: true, runValidators: true }
     )
     if (!updatedPlan) {
-      return res.status(404).json({ success: false, message: 'Plan not found' })
+      return sendResponse(res, 404, false, 'Subscription plan not found')
     }
-    res.status(200).json({ success: true,message: "Subscription plan successfully updated!", data: updatedPlan })
+    sendResponse(
+      res,
+      200,
+      true,
+      'Subscription plan updated successfully!',
+      updatedPlan
+    )
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message })
+    sendResponse(res, 400, false, err.message)
   }
 }
 
@@ -55,12 +82,10 @@ exports.deleteSubscriptionPlan = async (req, res) => {
   try {
     const deletedPlan = await SubscriptionPlan.findByIdAndDelete(req.params.id)
     if (!deletedPlan) {
-      return res.status(404).json({ success: false, message: 'Plan not found' })
+      return sendResponse(res, 404, false, 'Subscription plan not found')
     }
-    res
-      .status(200)
-      .json({ success: true, message: 'Plan deleted successfully' })
+    sendResponse(res, 200, true, 'Subscription plan deleted successfully!')
   } catch (err) {
-    res.status(400).json({ success: false, message: err.message })
+    sendResponse(res, 400, false, 'Invalid subscription plan ID')
   }
 }

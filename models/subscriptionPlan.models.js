@@ -1,5 +1,20 @@
 const mongoose = require('mongoose')
 
+const featureSchema = new mongoose.Schema(
+  {
+    featuresType: {
+      type: String,
+      default: '',
+    },
+    type: [
+      {
+        type: String,
+      },
+    ],
+  },
+  { _id: false }
+)
+
 const subscriptionPlanSchema = new mongoose.Schema(
   {
     title: {
@@ -14,17 +29,7 @@ const subscriptionPlanSchema = new mongoose.Schema(
       type: Number,
       required: [true, 'Price is required'],
     },
-    features: {
-      featuresType: {
-        type: String,
-        default: '',
-      },
-      type: [
-        {
-          type: String,
-        },
-      ],
-    },
+    features: [featureSchema],
     duration: {
       type: String,
       enum: ['monthly', 'yearly'],
