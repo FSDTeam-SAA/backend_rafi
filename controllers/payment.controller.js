@@ -5,17 +5,6 @@ const {
   processTransaction,
 } = require('../services/braintree.service')
 
-// JSON validation middleware
-const validateJsonBody = (err, req, res, next) => {
-  if (err instanceof SyntaxError && 'body' in err) {
-    return res.status(400).json({
-      success: false,
-      error: 'Invalid JSON payload',
-      details: err.message,
-    })
-  }
-  next()
-}
 
 // getClientToken
 exports.getClientToken = async (_req, res) => {
