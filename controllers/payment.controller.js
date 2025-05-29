@@ -1,10 +1,9 @@
-const { PaymentInfo } = require('../models/paymentInfo.model')
+const { PaymentInfo } = require("../models/payment.model")
 
 const {
   generateClientToken,
   processTransaction,
 } = require('../services/braintree.service')
-
 
 // getClientToken
 exports.getClientToken = async (_req, res) => {
@@ -19,15 +18,14 @@ exports.getClientToken = async (_req, res) => {
 // processTransaction
 exports.makePayment = async (req, res) => {
   try {
-    const { amount, paymentMethodNonce, userId, bookingId, seasonId } = req.body
+    const { amount, paymentMethodNonce, userId, subscriptionId } = req.body
 
     const result = await processTransaction(amount, paymentMethodNonce)
 
     if (result.success) {
       const newPayment = await PaymentInfo.create({
         userId,
-        bookingId,
-        seasonId,
+        subscriptionId,
         price: amount,
         paymentStatus: 'complete',
         transactionId: result.transaction.id,
