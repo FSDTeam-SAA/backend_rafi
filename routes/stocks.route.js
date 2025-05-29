@@ -6,8 +6,8 @@ const { stocksSummary, searchStocks, getStockOverview, getDailyGainersLosers } =
 
 const router = express.Router();
 
-router.get('/stock-summary',protect, stocksSummary);
-router.get("/search",protect,searchStocks);
-router.get("/stocks-overview",protect,getStockOverview)
+router.get('/stock-summary', stocksSummary);
+router.get("/search",searchStocks);
+router.get("/stocks-overview",getStockOverview)
 router.get( "/daily-gainner-loser",getDailyGainersLosers)
 module.exports = router;

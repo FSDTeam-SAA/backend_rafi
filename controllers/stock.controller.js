@@ -353,3 +353,32 @@ exports.getDailyGainersLosers = async (req, res) => {
         });
     }
 };
+
+
+
+exports.getStockScreenerByCountry = async (req, res) => {
+  const { country = 'US' } = req.query;
+
+  try {
+    const { data } = await finnhubClient.stockScreener({
+      marketCapitalizationMoreThan: 1000, // Example filter
+      country
+    });
+
+    const stocks = await Promise.all(data.result.slice(0, 10).map(async (stock) => {
+      const quote = await finnhubClient.quote(stock.symbol);
+      return {
+        symbol: stock.symbol,
+        name: stock.description,
+        marketCap: stock.marketCapitalization,
+        price: quote.data.c,
+        change: quote.data.d,
+        changePercent: quote.data.dp
+      };
+    }));
+
+    res.json({ country, stocks });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch stock screener by country', detail: err.message });
+  }
+};
