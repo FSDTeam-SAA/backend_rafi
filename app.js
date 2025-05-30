@@ -25,6 +25,7 @@ const paymentRouter = require("./routes/payments.route")
 const subscriptionRouter = require("./routes/subscriptionPlan.route");
 
 const portfolioRoutes = require("./routes/protfolio.route");
+const financialStatementsRoutes = require("./routes/financialStatements.route");
 
 
 
@@ -68,6 +69,8 @@ app.use("/api/v1", subscriptionRouter)
 // payments APIs
 app.use('/api/v1',paymentRouter)
 
+// financial statements
+app.use('/api/v1', financialStatementsRoutes)
 
 
 //stocks
