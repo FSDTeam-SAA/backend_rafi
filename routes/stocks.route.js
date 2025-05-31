@@ -1,13 +1,20 @@
 const express = require('express');
-const { createAd, getAllAds, getSingleAd, updateAd, deleteAd } = require("../controllers/ads.controller");
 const { protect, isAdmin } = require('../middlewares/auth.middleware');
 const upload = require('../middlewares/multer.middleware');
-const { stocksSummary, searchStocks, getStockOverview, getDailyGainersLosers } = require('../controllers/stock.controller');
+const { stocksSummary, searchStocks, getStockOverview, getDailyGainersLosers, getStockTargetPrice, getStockCashFlow, getStockEPS, getStockEarningsSurprise, getOliveStockOverview, getRevenueBreakdown } = require('../controllers/stock.controller');
 
 const router = express.Router();
 
-router.get('/stock-summary',protect, stocksSummary);
-router.get("/search",protect,searchStocks);
-router.get("/stocks-overview",protect,getStockOverview)
+router.get('/stock-summary', stocksSummary);
+router.get("/search",searchStocks);
+router.get("/stocks-overview",getStockOverview)
 router.get( "/daily-gainner-loser",getDailyGainersLosers)
+router.get( "/get-stock-overview",getOliveStockOverview)
+
+router.get("/revenue-breakdown",getRevenueBreakdown)
+
+router.get('/stock/target-price', getStockTargetPrice);
+router.get('/stock/cash-flow', getStockCashFlow);
+router.get('/stock/eps', getStockEPS);
+router.get('/stock/earnings-surprise', getStockEarningsSurprise);
 module.exports = router;

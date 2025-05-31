@@ -6,6 +6,9 @@ const api_key = finnhub.ApiClient.instance.authentications["api_key"];
 api_key.apiKey = process.env.FINHUB_API_KEY;
 const finnhubClient = new finnhub.DefaultApi();
 
+const FINNHUB_API_KEY = process.env.FINHUB_API_KEY;
+const MORNINGSTAR_API_KEY = process.env.MORNINGSTAR_API_KEY;
+
 // Get dynamic trending stock symbols
 async function getTrendingSymbols(limit = 5) {
     const { data: symbols } = await axios.get("https://finnhub.io/api/v1/stock/symbol", {
@@ -353,3 +356,399 @@ exports.getDailyGainersLosers = async (req, res) => {
         });
     }
 };
+
+
+
+exports.getStockScreenerByCountry = async (req, res) => {
+  const { country = 'US' } = req.query;
+
+  try {
+    const { data } = await finnhubClient.stockScreener({
+      marketCapitalizationMoreThan: 1000, // Example filter
+      country
+    });
+
+    const stocks = await Promise.all(data.result.slice(0, 10).map(async (stock) => {
+      const quote = await finnhubClient.quote(stock.symbol);
+      return {
+        symbol: stock.symbol,
+        name: stock.description,
+        marketCap: stock.marketCapitalization,
+        price: quote.data.c,
+        change: quote.data.d,
+        changePercent: quote.data.dp
+      };
+    }));
+
+    res.json({ country, stocks });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to fetch stock screener by country', detail: err.message });
+  }
+};
+
+
+
+exports.getStockTargetPrice = async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    const { data } = await axios.get(`https://finnhub.io/api/v1/stock/price-target`, {
+      params: { symbol, token: FINNHUB_API_KEY }
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching target price' });
+  }
+};
+
+exports.getStockCashFlow = async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    const { data } = await axios.get(`https://finnhub.io/api/v1/stock/cash-flow`, {
+      params: { symbol, token: FINNHUB_API_KEY }
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching cash flow data' });
+  }
+};
+
+exports.getStockEPS = async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    const { data } = await axios.get(`https://finnhub.io/api/v1/stock/earnings`, {
+      params: { symbol, token: FINNHUB_API_KEY }
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching EPS data' });
+  }
+};
+
+
+exports.getStockEarningsSurprise = async (req, res) => {
+  try {
+    const { symbol } = req.query;
+    const { data } = await axios.get(`https://finnhub.io/api/v1/stock/earnings`, {
+      params: { symbol, token: FINNHUB_API_KEY }
+    });
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ error: 'Error fetching earnings surprise data' });
+  }
+};
+
+
+exports.getOliveStockOverview = async (req, res) => {
+  try {
+    const { symbol } = req.query;
+
+    // === Fetch Finnhub Data ===
+    const [quote, earnings, metrics, profile] = await Promise.all([
+      axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
+      axios.get(`https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
+      axios.get(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB_API_KEY}`),
+      axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`)
+    ]);
+
+    const currentPrice = quote.data.c;
+    const fairValue = metrics.data.metric.fairValue || currentPrice; // fallback
+    const capitalAllocationScore = metrics.data.metric.returnOnCapitalEmployed || 0;
+    const moatProxy = metrics.data.metric.grossMargin || 0;
+
+    // === Proxy Logic (no Morningstar) ===
+
+    // Quadrant logic (approximation)
+    let quadrant = 'Yellow';
+    if (capitalAllocationScore > 15 && moatProxy > 60) quadrant = 'Olive Green';
+    else if (capitalAllocationScore > 15 && moatProxy <= 60) quadrant = 'Lime Green';
+    else if (capitalAllocationScore <= 15 && moatProxy > 60) quadrant = 'Orange';
+
+    // Valuation bar
+    const valuationDiff = ((currentPrice - fairValue) / fairValue) * 100;
+    let valuationColor = 'yellow';
+    if (valuationDiff < -10) valuationColor = 'green';
+    else if (valuationDiff > 10) valuationColor = 'red';
+
+    // Olive logic
+    const olives = {
+      financialHealth: capitalAllocationScore > 15 ? 'green' : 'gray',
+      competitiveAdvantage: moatProxy > 60 ? 'green' : 'gray',
+      valuation: currentPrice <= fairValue * 1.1 ? 'green' : 'gray'
+    };
+
+    const shariaCompliant = true; // Placeholder (add screening logic/API)
+
+    return res.json({
+      company: profile.data.name || symbol,
+      quadrant,
+      olives,
+      shariaCompliant,
+      valuationBar: {
+        percent: valuationDiff.toFixed(2),
+        color: valuationColor,
+        currentPrice,
+        fairValue
+      },
+      finnhub: {
+        quote: quote.data,
+        earnings: earnings.data,
+        metrics: metrics.data,
+        profile: profile.data
+      }
+    });
+
+  } catch (err) {
+    console.error('Stock overview error:', err);
+    return res.status(500).json({ error: 'Failed to fetch stock overview' });
+  }
+};
+
+
+
+
+// exports.getRevenueBreakdown= async(req, res) =>{
+//   const { symbol } = req.query;
+
+//   if (!symbol) {
+//     return res.status(400).json({ error: 'Missing required query parameter: symbol' });
+//   }
+
+//   try {
+//     // Fetch revenue breakdown data from Finnhub
+//     const response = await axios.get('https://finnhub.io/api/v1/stock/revenue-breakdown', {
+//       params: {
+//         symbol: symbol,
+//         token: FINNHUB_API_KEY,
+//       },
+//     });
+
+//     const data = response.data.data;
+
+//     console.log( data)
+//     // if (!data || !data.report || !data.report.length) {
+//     //   return res.status(404).json({ error: 'Revenue breakdown data not found for the specified symbol.' });
+//     // }
+
+//     // Process the first report in the data
+//     const report = data.report[0];
+//     console.log(report.revenueBreakdown)
+
+//     const sankeyData = [];
+
+//     // Process revenue segments
+//     if (report.revenue) {
+//       const totalRevenue = report.revenueBreakdown.reduce((sum, item) => sum + item.value, 0);
+
+//       report.revenue.forEach((item) => {
+//         sankeyData.push({
+//           source: 'Revenue',
+//           target: item.label,
+//           value: item.value,
+//         });
+//       });
+
+//       // Add total revenue node
+//       sankeyData.push({
+//         source: 'Gross Profit',
+//         target: 'Revenue',
+//         value: totalRevenue,
+//       });
+//     }
+
+//     // Process cost of revenue
+//     if (report.costOfRevenue) {
+//       const totalCost = report.costOfRevenue.reduce((sum, item) => sum + item.value, 0);
+
+//       report.costOfRevenue.forEach((item) => {
+//         sankeyData.push({
+//           source: item.label,
+//           target: 'Cost of Revenue',
+//           value: item.value,
+//         });
+//       });
+
+//       sankeyData.push({
+//         source: 'Cost of Revenue',
+//         target: 'Gross Profit',
+//         value: totalCost,
+//       });
+//     }
+
+//     // Process operating expenses
+//     if (report.operatingExpenses) {
+//       const totalOperatingExpenses = report.operatingExpenses.reduce((sum, item) => sum + item.value, 0);
+
+//       report.operatingExpenses.forEach((item) => {
+//         sankeyData.push({
+//           source: item.label,
+//           target: 'Operating Expenses',
+//           value: item.value,
+//         });
+//       });
+
+//       sankeyData.push({
+//         source: 'Operating Expenses',
+//         target: 'Gross Profit',
+//         value: totalOperatingExpenses,
+//       });
+//     }
+
+//     // Process net profit
+//     if (report.netProfit) {
+//       sankeyData.push({
+//         source: 'Net Profit',
+//         target: 'Gross Profit',
+//         value: report.netProfit,
+//       });
+//     }
+
+//     // Process tax
+//     if (report.tax) {
+//       sankeyData.push({
+//         source: 'Tax',
+//         target: 'Net Profit',
+//         value: report.tax,
+//       });
+//     }
+
+//     res.json(sankeyData);
+//   } catch (error) {
+//     console.error('Error fetching revenue breakdown:', error.message);
+//     res.status(500).json({ error: 'An error occurred while fetching revenue breakdown data.' });
+//   }
+// }
+
+// exports.getRevenueBreakdown = async (req, res) => {
+//   const { symbol } = req.query;
+//   if (!symbol) {
+//     return res.status(400).json({ error: 'Missing query param: symbol' });
+//   }
+
+//   try {
+//     const response = await axios.get('https://finnhub.io/api/v1/stock/revenue-breakdown', {
+//       params: {
+//         symbol,
+//         token: FINNHUB_API_KEY,
+//       },
+//     });
+
+//     const item = response.data.data?.[0]?.breakdown;
+//     if (!item || !item.revenueBreakdown) {
+//       return res.status(404).json({ error: 'Revenue breakdown not available' });
+//     }
+
+//     const revenue = item.value;
+//     const sankeyData = [];
+
+//     // Loop through revenueBreakdown and extract the Product breakdown
+//     const productData = item.revenueBreakdown.find(r => r.axis === 'srt_ProductOrServiceAxis');
+//     if (productData?.data?.length) {
+//       productData.data.forEach(product => {
+//         sankeyData.push({
+//           source: 'Revenue',
+//           target: product.label,
+//           value: product.value,
+//         });
+//       });
+//     }
+
+//     // Add the total Revenue -> Gross Profit (for structure)
+//     sankeyData.push({
+//       source: 'Gross Profit',
+//       target: 'Revenue',
+//       value: revenue,
+//     });
+
+//     res.json(sankeyData);
+//   } catch (err) {
+//     console.error(err.message);
+//     res.status(500).json({ error: 'Failed to fetch or process data' });
+//   }
+// };
+
+
+exports.getRevenueBreakdown = async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'Symbol is required' });
+
+  try {
+    const url = `https://finnhub.io/api/v1/stock/revenue-breakdown?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`;
+    const { data } = await axios.get(url);
+    const breakdown = data?.data?.[0]?.breakdown;
+
+    if (!breakdown || !breakdown.revenueBreakdown) {
+      return res.status(404).json({ error: 'Revenue breakdown not available' });
+    }
+
+    const revenueTotal = breakdown.value || 0;
+    const sankeyData = [];
+
+    const breakdowns = breakdown.revenueBreakdown.filter(b => b.axis === 'srt_ProductOrServiceAxis');
+
+    const grouped = breakdowns?.[0]; // Products vs Services
+    const detailed = breakdowns?.[1]; // iPhone, iPad, etc.
+
+    // Top-level: Revenue → Products / Services
+    if (grouped?.data) {
+      grouped.data.forEach(item => {
+        sankeyData.push({
+          source: 'Revenue',
+          target: item.label,
+          value: +(item.value / 1e9).toFixed(2)
+        });
+      });
+    }
+
+    // Mid-level: Products → iPhone, iPad, Mac, etc.
+    if (detailed?.data) {
+      detailed.data.forEach(item => {
+        if (item.label !== 'Services') {
+          sankeyData.push({
+            source: 'Products',
+            target: item.label,
+            value: +(item.value / 1e9).toFixed(2)
+          });
+        } else {
+          // Keep Services separate if it's also broken down
+          sankeyData.push({
+            source: 'Revenue',
+            target: 'Services',
+            value: +(item.value / 1e9).toFixed(2)
+          });
+        }
+      });
+    }
+
+    // Region breakdown
+    const region = breakdown.revenueBreakdown.find(b => b.axis === 'us-gaap_StatementBusinessSegmentsAxis');
+    if (region?.data) {
+      region.data.forEach(item => {
+        sankeyData.push({
+          source: 'Revenue by Region',
+          target: item.label,
+          value: +(item.value / 1e9).toFixed(2),
+        });
+      });
+
+      sankeyData.push({
+        source: 'Revenue',
+        target: 'Revenue by Region',
+        value: +(revenueTotal / 1e9).toFixed(2),
+      });
+    }
+
+    // Gross Profit → Revenue
+    sankeyData.push({
+      source: 'Gross Profit',
+      target: 'Revenue',
+      value: +(revenueTotal / 1e9).toFixed(2),
+    });
+
+    res.json(sankeyData);
+  } catch (error) {
+    console.error('Error fetching revenue breakdown:', error);
+    res.status(500).json({ error: 'Failed to fetch revenue breakdown' });
+  }
+};
+
+
