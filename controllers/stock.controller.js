@@ -681,72 +681,82 @@ exports.getRevenueBreakdown = async (req, res) => {
     }
 
     const revenueTotal = breakdown.value || 0;
-    const sankeyData = [];
+    const links = [];
+    const nodeSet = new Set();
 
     const breakdowns = breakdown.revenueBreakdown.filter(b => b.axis === 'srt_ProductOrServiceAxis');
 
     const grouped = breakdowns?.[0]; // Products vs Services
     const detailed = breakdowns?.[1]; // iPhone, iPad, etc.
 
-    // Top-level: Revenue → Products / Services
     if (grouped?.data) {
       grouped.data.forEach(item => {
-        sankeyData.push({
+        links.push({
           source: 'Revenue',
           target: item.label,
-          value: +(item.value / 1e9).toFixed(2)
+          value: +(item.value / 1e9).toFixed(2),
         });
+        nodeSet.add('Revenue');
+        nodeSet.add(item.label);
       });
     }
 
-    // Mid-level: Products → iPhone, iPad, Mac, etc.
     if (detailed?.data) {
       detailed.data.forEach(item => {
         if (item.label !== 'Services') {
-          sankeyData.push({
+          links.push({
             source: 'Products',
             target: item.label,
-            value: +(item.value / 1e9).toFixed(2)
+            value: +(item.value / 1e9).toFixed(2),
           });
+          nodeSet.add('Products');
+          nodeSet.add(item.label);
         } else {
-          // Keep Services separate if it's also broken down
-          sankeyData.push({
+          links.push({
             source: 'Revenue',
             target: 'Services',
-            value: +(item.value / 1e9).toFixed(2)
+            value: +(item.value / 1e9).toFixed(2),
           });
+          nodeSet.add('Revenue');
+          nodeSet.add('Services');
         }
       });
     }
 
-    // Region breakdown
     const region = breakdown.revenueBreakdown.find(b => b.axis === 'us-gaap_StatementBusinessSegmentsAxis');
     if (region?.data) {
       region.data.forEach(item => {
-        sankeyData.push({
+        links.push({
           source: 'Revenue by Region',
           target: item.label,
           value: +(item.value / 1e9).toFixed(2),
         });
+        nodeSet.add('Revenue by Region');
+        nodeSet.add(item.label);
       });
 
-      sankeyData.push({
+      links.push({
         source: 'Revenue',
         target: 'Revenue by Region',
         value: +(revenueTotal / 1e9).toFixed(2),
       });
+      nodeSet.add('Revenue');
+      nodeSet.add('Revenue by Region');
     }
 
-    // Gross Profit → Revenue
-    sankeyData.push({
+    links.push({
       source: 'Gross Profit',
       target: 'Revenue',
       value: +(revenueTotal / 1e9).toFixed(2),
     });
+    nodeSet.add('Gross Profit');
+    nodeSet.add('Revenue');
 
-    res.json(sankeyData);
+    const nodes = Array.from(nodeSet).map(name => ({ name }));
+
+    res.json({ nodes, links });
   } catch (error) {
-    console.error('Error fetching revenue breakdown:', error);
+    console.error('Error fetching revenue breakdown:', error.message);
     res.status(500).json({ error: 'Failed to fetch revenue breakdown' });
   }
 };
