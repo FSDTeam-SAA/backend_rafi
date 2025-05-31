@@ -400,17 +400,36 @@ exports.getStockTargetPrice = async (req, res) => {
   }
 };
 
+
 exports.getStockCashFlow = async (req, res) => {
   try {
     const { symbol } = req.query;
-    const { data } = await axios.get(`https://finnhub.io/api/v1/stock/cash-flow`, {
-      params: { symbol, token: FINNHUB_API_KEY }
+    if (!symbol) return res.status(400).json({ error: 'Missing symbol parameter' });
+
+    const { data } = await axios.get('https://finnhub.io/api/v1/stock/financials-reported', {
+      params: {
+        symbol,
+        token: FINNHUB_API_KEY
+      }
     });
-    res.json(data);
+
+    const reports = data.data || [];
+
+    // Extract cash flow items from the latest report
+    const cashFlowReport = reports.find(report => {
+      return report.report?.ic && Object.keys(report.report.ic).length > 0;
+    });
+
+    res.json({
+      symbol,
+      cashFlow: cashFlowReport || null
+    });
   } catch (err) {
-    res.status(500).json({ error: 'Error fetching cash flow data' });
+    console.error('Error fetching cash flow:', err.message);
+    res.status(500).json({ error: 'Failed to fetch cash flow data' });
   }
 };
+
 
 exports.getStockEPS = async (req, res) => {
   try {
