@@ -1,86 +1,16 @@
-// routes/financialStatements.routes.js
 const express = require('express')
 const router = express.Router()
-// Correctly import the controller functions
 const financialStatementsController = require('../controllers/financialStatements.controller')
-const getBalanceSheet = require("../controllers/financialStatements.controller")
+
+// Helper function to validate YYYY-MM-DD format
+function isValidDate(dateString) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateString) && !isNaN(new Date(dateString))
+}
+
 /**
- * @swagger
- * /api/financial-statements/balance-sheet:
- * get:
- * summary: Retrieve a company's financial statement balance sheet.
- * description: Fetches annual or quarterly balance sheet data for a given stock symbol from Finnhub.
- * parameters:
- * - in: query
- * name: symbol
- * schema:
- * type: string
- * required: true
- * description: The stock ticker symbol (e.g., AAPL, MSFT).
- * - in: query
- * name: frequency
- * schema:
- * type: string
- * enum: [annual, quarterly]
- * required: false
- * default: annual
- * description: The frequency of the financial report (annual or quarterly).
- * responses:
- * 200:
- * description: Successfully retrieved balance sheet data.
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * symbol:
- * type: string
- * example: AAPL
- * financials:
- * type: array
- * items:
- * type: object
- * properties:
- * reportFrequency:
- * type: string
- * example: annual
- * bs:
- * type: object
- * properties:
- * cashAndCashEquivalents:
- * type: number
- * example: 38400000000
- * totalAssets:
- * type: number
- * example: 352583000000
- * totalLiabilities:
- * type: number
- * example: 293375000000
- * 400:
- * description: Invalid request parameters.
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * error:
- * type: string
- * example: Stock symbol is required.
- * 500:
- * description: Internal server error, or an error from the Finnhub API.
- * content:
- * application/json:
- * schema:
- * type: object
- * properties:
- * error:
- * type: string
- * example: Failed to retrieve balance sheet data.
- * details:
- * type: string
- * example: Finnhub API error: 400 - {"error":"Invalid stock symbol"}
+ * GET /api/financial-statements/balance-sheet
  */
-router.get('/financial-statement/balance-sheet', async (req, res) => {
+router.get('/financial-statements/balance-sheet', async (req, res) => {
   const { symbol, frequency } = req.query
 
   if (!symbol) {
@@ -97,7 +27,6 @@ router.get('/financial-statement/balance-sheet', async (req, res) => {
   try {
     const balanceSheetData =
       await financialStatementsController.getBalanceSheet(
-        // <--- Call the function from the imported controller
         symbol.toUpperCase(),
         frequency ? frequency.toLowerCase() : 'annual'
       )
@@ -113,7 +42,44 @@ router.get('/financial-statement/balance-sheet', async (req, res) => {
   }
 })
 
-// If you had other routes for financial statements, they would go here
-// router.get('/income-statement', financialStatementsController.getIncomeStatement);
+/**
+ * GET /api/financial-statements/dividends
+ */
+router.get('/financial-statements/dividends', async (req, res) => {
+  const { symbol, fromDate, toDate } = req.query
 
-module.exports = router // Export the router instance
+  if (!symbol || !fromDate || !toDate) {
+    return res
+      .status(400)
+      .json({ error: 'Stock symbol, fromDate, and toDate are required.' })
+  }
+
+  if (!isValidDate(fromDate) || !isValidDate(toDate)) {
+    return res
+      .status(400)
+      .json({ error: 'Invalid date format. Use YYYY-MM-DD.' })
+  }
+
+  if (new Date(fromDate) > new Date(toDate)) {
+    return res.status(400).json({ error: 'fromDate cannot be after toDate.' })
+  }
+
+  try {
+    const dividendsData = await financialStatementsController.getDividends(
+      symbol.toUpperCase(),
+      fromDate,
+      toDate
+    )
+    res.json(dividendsData)
+  } catch (error) {
+    console.error(
+      `Error in /api/financial-statements/dividends route: ${error.message}`
+    )
+    res.status(500).json({
+      error: 'Failed to retrieve dividend data.',
+      details: error.message,
+    })
+  }
+})
+
+module.exports = router
