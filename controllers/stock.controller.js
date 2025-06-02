@@ -742,26 +742,26 @@ exports.getRevenueBreakdown = async (req, res) => {
       });
     }
 
-    const region = breakdown.revenueBreakdown.find(b => b.axis === 'us-gaap_StatementBusinessSegmentsAxis');
-    if (region?.data) {
-      region.data.forEach(item => {
-        links.push({
-          source: 'Revenue by Region',
-          target: item.label,
-          value: +(item.value / 1e9).toFixed(2),
-        });
-        nodeSet.add('Revenue by Region');
-        nodeSet.add(item.label);
-      });
+    // const region = breakdown.revenueBreakdown.find(b => b.axis === 'us-gaap_StatementBusinessSegmentsAxis');
+    // if (region?.data) {
+    //   region.data.forEach(item => {
+    //     links.push({
+    //       source: 'Revenue by Region',
+    //       target: item.label,
+    //       value: +(item.value / 1e9).toFixed(2),
+    //     });
+    //     nodeSet.add('Revenue by Region');
+    //     nodeSet.add(item.label);
+    //   });
 
-      links.push({
-        source: 'Revenue',
-        target: 'Revenue by Region',
-        value: +(revenueTotal / 1e9).toFixed(2),
-      });
-      nodeSet.add('Revenue');
-      nodeSet.add('Revenue by Region');
-    }
+    //   links.push({
+    //     source: 'Revenue',
+    //     target: 'Revenue by Region',
+    //     value: +(revenueTotal / 1e9).toFixed(2),
+    //   });
+    //   nodeSet.add('Revenue');
+    //   nodeSet.add('Revenue by Region');
+    // }
 
     links.push({
       source: 'Gross Profit',
