@@ -6,7 +6,7 @@ newsDescription: { type: String, required: true },
 newsImage: { type: String, },
 // date: { type: Date, default: Date.now },
 views: { type: Number, default: 0 },
-tickers: { type: String, required: true },
+tickers: { type: String},
 source : { type: String, },
 // author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true });

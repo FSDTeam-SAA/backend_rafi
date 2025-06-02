@@ -7,7 +7,7 @@ const cloudinary = require("cloudinary").v2;
 //creating news
 exports.createNews = async (req, res) => {
     try {
-        const { newsTitle, newsDescription, tickers } = req.body;
+        const { newsTitle, newsDescription } = req.body;
         // const author = req.user._id; 
         const date = new Date();
         const existingNews = await News.findOne({ newsTitle });
@@ -20,7 +20,7 @@ exports.createNews = async (req, res) => {
             );
         }
         // Validate the request body
-        if (!newsTitle || !newsDescription  || !tickers) {
+        if (!newsTitle || !newsDescription ) {
             return res.status(400).json(
                 {
                     status: false,
@@ -47,7 +47,6 @@ exports.createNews = async (req, res) => {
             newsDescription,
             newsImage,
             date,
-            tickers,
             // author,
         });
         await news.save();
@@ -153,7 +152,7 @@ exports.getSingleNews = async (req, res) => {
 exports.updateNews = async (req, res) => {
     try {
         const newsId = req.params.id;
-        const { newsTitle, newsDescription, tickers } = req.body;
+        const { newsTitle, newsDescription } = req.body;
         // const author = req.user._id;
 
         const existingNews = await News.findById(newsId);
@@ -185,9 +184,6 @@ exports.updateNews = async (req, res) => {
         existingNews.newsDescription = newsDescription;
         existingNews.newsImage = newsImage;
 
-
-
-        existingNews.tickers = tickers;
         // existingNews.author = author;
         await existingNews.save();
         return res.status(200).json(
