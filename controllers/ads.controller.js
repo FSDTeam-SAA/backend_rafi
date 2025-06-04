@@ -214,7 +214,7 @@ exports.deleteAd = async (req, res) => {
     }
 }
 
-const updatePublishStatus = async (req, res) => {
+exports.updatePublishStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { publish } = req.body;

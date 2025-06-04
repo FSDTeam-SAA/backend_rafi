@@ -85,3 +85,22 @@ exports.getAllInfluencers = async (req, res) => {
 
     }
 }
+
+exports.deleteInfluencer = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const user = await User.findByIdAndDelete(id);
+        if (!user) {
+            return res.status(404).json({
+                status: false, message: "Influencer not found"
+            });
+        }
+        res.status(200).json({
+            success: true,
+            message: "Influencer deleted successfully",
+        });
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ success: false, message: "Failed to delete influencer " });
+    }
+}
