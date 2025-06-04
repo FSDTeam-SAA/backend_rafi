@@ -1,4 +1,5 @@
 const User = require("../models/user.model");
+const { uploadOnCloudinary } = require("../utils/cloudnary");
 
 exports.createInfluences = async (req, res) => {
     try {

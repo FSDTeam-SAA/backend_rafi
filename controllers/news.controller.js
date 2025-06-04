@@ -1,6 +1,7 @@
 
 const News = require('../models/newsAdmin.model');
 const User = require('../models/user.model');
+const { uploadOnCloudinary } = require('../utils/cloudnary');
 const cloudinary = require("cloudinary").v2;
 
 
@@ -35,6 +36,7 @@ exports.createNews = async (req, res) => {
                 const image = await uploadOnCloudinary(req.file.buffer, 'news');
                 newsImage = image.secure_url;
             } catch (error) {
+                console.log(error)
                 return res.status(400).json({
                     status: false,
                     message: 'Failed to upload image',
