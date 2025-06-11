@@ -1,4 +1,5 @@
 const User = require("../models/user.model");
+const { uploadOnCloudinary } = require("../utils/cloudnary");
 
 exports.createInfluences = async (req, res) => {
     try {
@@ -82,5 +83,24 @@ exports.getAllInfluencers = async (req, res) => {
         console.log(error.message);
         res.status(500).json({ status: false, message: "Failed to get all influencers " });
 
+    }
+}
+
+exports.deleteInfluencer = async (req, res) => {
+    try {
+        const id = req.params.id;
+        const user = await User.findByIdAndDelete(id);
+        if (!user) {
+            return res.status(404).json({
+                status: false, message: "Influencer not found"
+            });
+        }
+        res.status(200).json({
+            success: true,
+            message: "Influencer deleted successfully",
+        });
+    } catch (error) {
+        console.log(error.message);
+        res.status(500).json({ success: false, message: "Failed to delete influencer " });
     }
 }

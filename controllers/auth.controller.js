@@ -84,6 +84,18 @@ const login = async (req, res) => {
   }
 }
 
+ const generateOTP = () => {
+
+    // Declare a digits variable  
+    // which stores all digits 
+    var digits = '0123456789';
+    let OTP = '';
+    for (let i = 0; i < 6; i++) {
+      OTP += digits[Math.floor(Math.random() * 10)];
+    }
+    return OTP;
+  }
+
 // forget password
 const forgotPassword = async (req, res) => {
   try {
@@ -94,10 +106,18 @@ const forgotPassword = async (req, res) => {
       return
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_ACCESS_SECRET, {
+    
+    
+    const otp = generateOTP()
+    const jwtPayloadOTP = {
+      otp: otp,
+    };
+    
+    const token = jwt.sign(jwtPayloadOTP, process.env.JWT_ACCESS_SECRET, {
       expiresIn: '50h',
     })
-    const link = `${process.env.FRONTEND_URL}/auth/reset-password?token=${token}`
+    user.password_reset_token = token
+    await user.save()
 
     await sendMail(
       email,
@@ -161,8 +181,8 @@ const forgotPassword = async (req, res) => {
           </div>
           <div class="content">
             <p>Hello,</p>
-            <p>You recently requested to reset your password. Click the button below to reset it:</p>
-            <a href="${link}" class="btn">Reset Password</a>
+            <p>You recently requested to reset your password. Here is Your OTP:</p>
+            <h1>${token}</h1>
             <p>If you didn’t request this, please ignore this email.</p>
           </div>
           <div class="footer">
@@ -176,7 +196,7 @@ const forgotPassword = async (req, res) => {
 
     res
       .status(200)
-      .json({ success: true, message: 'Password reset link has send' })
+      .json({ success: true, message: 'OTP Is Send' })
   } catch (error) {
     res.status(500).json({
       success: false,
@@ -188,7 +208,7 @@ const forgotPassword = async (req, res) => {
 // reset password
 const resetPassword = async (req, res) => {
   try {
-    const { token, password } = req.body
+    const { email,otp, password } = req.body
 
     if (!token || !password) {
       res
@@ -196,17 +216,16 @@ const resetPassword = async (req, res) => {
         .json({ success: false, message: 'All field are required!' })
       return
     }
-
-    let decode
-    try {
-      decode = jwt.verify(token, process.env.JWT_ACCESS_SECRET)
-    } catch (error) {
-      if (error.name == 'TokenExpiredError') {
-        res.status(400).json({ success: false, message: 'Token has expired' })
-        return
-      }
-      res.status(400).json({ success: false, message: 'Invalid token ' })
-      return
+        const user = await User.findOne({email: email})
+    if (!user) {
+      res.status(404).json({ success: false, message: 'User not found!' })
+    }
+    if (!user.password_reset_token) {
+      res.status(404).json({ success: false, message: 'Password reset token is invalid !' })
+    }
+    const verify = jwt.decode( otp, process.env.SECRET_KEY)
+    if (verify.otp !== otp) {
+      res.status(404).json({ success: false, message: 'Invalid OTP!' })
     }
 
     const hash = await bcrypt.hash(password, 10)
