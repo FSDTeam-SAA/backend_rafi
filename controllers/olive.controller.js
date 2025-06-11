@@ -1,0 +1,84 @@
+
+const csv = require('csv-parser');
+const fs = require('fs');
+const Olive = require('../models/stcoks.olive.model');
+
+
+
+exports.uploadOlive = async (req, res) => {
+    try {
+        const { symbol, fair_value, financial_health, compatitive_advantage } = req.body;
+        const updatedOlive = await Olive.findOneAndUpdate(
+            { symbol: symbol.toUpperCase() },
+            { symbol: symbol.toUpperCase(), fair_value, financial_health, compatitive_advantage },
+            { new: true, upsert: true }
+        );
+        res.status(201).json(updatedOlive);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to create olive stock' });
+    }
+}
+
+// Upload CSV file
+exports.uploadCSV = async (req, res) => {
+    const results = [];
+    try {
+        const stream = Readable.from(req.file.buffer);
+        stream
+            .pipe(csv())
+            .on('data', (data) => results.push(data))
+            .on('end', async () => {
+                const upserts = results.map(row =>
+                    Olive.findOneAndUpdate(
+                        { symbol: row.symbol.toUpperCase() },
+                        {
+                            symbol: row.symbol.toUpperCase(),
+                            fair_value: Number(row.fair_value),
+                            financial_health: row.financial_health,
+                            compatitive_advantage: row.compatitive_advantage
+                        },
+                        { upsert: true, new: true }
+                    )
+                );
+
+                await Promise.all(upserts);
+                res.status(201).json({ message: 'CSV processed successfully', count: results.length });
+            });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to process CSV upload' });
+    }
+}
+
+// Read all
+
+exports.getAllOlive = async (req, res) => {
+    try {
+        const olives = await Olive.find();
+        res.json(olives);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch olive stocks' });
+    }
+}
+
+// // Update by ID
+// router.put('/olive/:id', async (req, res) => {
+//   try {
+//     const olive = await Olive.findByIdAndUpdate(req.params.id, req.body, { new: true });
+//     res.json(olive);
+//   } catch (err) {
+//     res.status(500).json({ error: 'Failed to update olive stock' });
+//   }
+// });
+
+// Delete by ID
+
+exports.deleteOlive = async (req, res) => {
+    try {
+        await Olive.findByIdAndDelete(req.params.id);
+        res.json({ message: 'Olive stock deleted' });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete olive stock' });
+    }
+}
+
+

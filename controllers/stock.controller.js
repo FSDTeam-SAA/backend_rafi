@@ -1,5 +1,6 @@
 const axios = require("axios");
 const finnhub = require("finnhub");
+const Olive = require("../models/stcoks.olive.model");
 
 // Configure Finnhub client
 const api_key = finnhub.ApiClient.instance.authentications["api_key"];
@@ -164,6 +165,9 @@ exports.searchStocks = async (req, res) => {
         console.log(topMatches);
 
         const enrichedResults = await Promise.all(topMatches.map(async (item) => {
+        //   const companyProfile = await new Promise((resolve, reject) =>
+        //     finnhubClient.companyProfile2({ symbol: item.symbol }, (err, data) => err ? reject(err) : resolve(data)));
+        // console.log(companyProfile)
             return new Promise((resolve, reject) => {
                 finnhubClient.quote(item.symbol, (err, quote) => {
                     if (err || !quote || quote.c === 0) return resolve(null);
@@ -212,6 +216,7 @@ exports.getStockOverview = async (req, res) => {
         const companyProfile = await new Promise((resolve, reject) =>
             finnhubClient.companyProfile2({ symbol }, (err, data) => err ? reject(err) : resolve(data))
         );
+        console.log(companyProfile)
 
         // 2. Quote
         const quote = await new Promise((resolve, reject) =>
@@ -266,7 +271,8 @@ exports.getStockOverview = async (req, res) => {
                 company: {
                     name: companyProfile.name,
                     symbol: companyProfile.ticker,
-                    exchange: companyProfile.exchange
+                    exchange: companyProfile.exchange,
+                    logo: companyProfile.logo,
                 },
                 priceInfo: {
                     currentPrice: quote.c,
@@ -457,70 +463,72 @@ exports.getStockEarningsSurprise = async (req, res) => {
 };
 
 
-exports.getOliveStockOverview = async (req, res) => {
-  try {
-    const { symbol } = req.query;
+// exports.getOliveStockOverview = async (req, res) => {
+//   try {
+//     const { symbol } = req.query;
 
-    // === Fetch Finnhub Data ===
-    const [quote, earnings, metrics, profile] = await Promise.all([
-      axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
-      axios.get(`https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
-      axios.get(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB_API_KEY}`),
-      axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`)
-    ]);
+//     // === Fetch Finnhub Data ===
+//     const [quote, earnings, metrics, profile] = await Promise.all([
+//       axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
+//       axios.get(`https://finnhub.io/api/v1/stock/earnings?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
+//       axios.get(`https://finnhub.io/api/v1/stock/metric?symbol=${symbol}&metric=all&token=${FINNHUB_API_KEY}`),
+//       axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`)
+//     ]);
 
-    const currentPrice = quote.data.c;
-    const fairValue = metrics.data.metric.fairValue || currentPrice; // fallback
-    const capitalAllocationScore = metrics.data.metric.returnOnCapitalEmployed || 0;
-    const moatProxy = metrics.data.metric.grossMargin || 0;
+//     const currentPrice = quote.data.c;
+//     const fairValue = metrics.data.metric.fairValue || currentPrice; // fallback
+//     const capitalAllocationScore = metrics.data.metric.returnOnCapitalEmployed || 0;
+//     const moatProxy = metrics.data.metric.grossMargin || 0;
 
-    // === Proxy Logic (no Morningstar) ===
+//     // === Proxy Logic (no Morningstar) ===
 
-    // Quadrant logic (approximation)
-    let quadrant = 'Yellow';
-    if (capitalAllocationScore > 15 && moatProxy > 60) quadrant = 'Olive Green';
-    else if (capitalAllocationScore > 15 && moatProxy <= 60) quadrant = 'Lime Green';
-    else if (capitalAllocationScore <= 15 && moatProxy > 60) quadrant = 'Orange';
+//     // Quadrant logic (approximation)
+//     let quadrant = 'Yellow';
+//     if (capitalAllocationScore > 15 && moatProxy > 60) quadrant = 'Olive Green';
+//     else if (capitalAllocationScore > 15 && moatProxy <= 60) quadrant = 'Lime Green';
+//     else if (capitalAllocationScore <= 15 && moatProxy > 60) quadrant = 'Orange';
 
-    // Valuation bar
-    const valuationDiff = ((currentPrice - fairValue) / fairValue) * 100;
-    let valuationColor = 'yellow';
-    if (valuationDiff < -10) valuationColor = 'green';
-    else if (valuationDiff > 10) valuationColor = 'red';
+//     // Valuation bar
+//     const valuationDiff = ((currentPrice - fairValue) / fairValue) * 100;
+//     let valuationColor = 'yellow';
+//     if (valuationDiff < -10) valuationColor = 'green';
+//     else if (valuationDiff > 10) valuationColor = 'red';
 
-    // Olive logic
-    const olives = {
-      financialHealth: capitalAllocationScore > 15 ? 'green' : 'gray',
-      competitiveAdvantage: moatProxy > 60 ? 'green' : 'gray',
-      valuation: currentPrice <= fairValue * 1.1 ? 'green' : 'gray'
-    };
+//     // Olive logic
+//     const olives = {
+//       financialHealth: capitalAllocationScore > 15 ? 'green' : 'gray',
+//       competitiveAdvantage: moatProxy > 60 ? 'green' : 'gray',
+//       valuation: currentPrice <= fairValue * 1.1 ? 'green' : 'gray'
+//     };
 
-    const shariaCompliant = true; // Placeholder (add screening logic/API)
+//     const shariaCompliant = true; // Placeholder (add screening logic/API)
 
-    return res.json({
-      company: profile.data.name || symbol,
-      quadrant,
-      olives,
-      shariaCompliant,
-      valuationBar: {
-        percent: valuationDiff.toFixed(2),
-        color: valuationColor,
-        currentPrice,
-        fairValue
-      },
-      finnhub: {
-        quote: quote.data,
-        earnings: earnings.data,
-        metrics: metrics.data,
-        profile: profile.data
-      }
-    });
+//     return res.json({
+//       company: profile.data.name || symbol,
+//       logo: profile.data.logo || '',
+//       exchange: profile.data.exchange || '',
+//       quadrant,
+//       olives,
+//       shariaCompliant,
+//       valuationBar: {
+//         percent: valuationDiff.toFixed(2),
+//         color: valuationColor,
+//         currentPrice,
+//         fairValue
+//       },
+//       finnhub: {
+//         quote: quote.data,
+//         earnings: earnings.data,
+//         metrics: metrics.data,
+//         profile: profile.data
+//       }
+//     });
 
-  } catch (err) {
-    console.error('Stock overview error:', err);
-    return res.status(500).json({ error: 'Failed to fetch stock overview' });
-  }
-};
+//   } catch (err) {
+//     console.error('Stock overview error:', err);
+//     return res.status(500).json({ error: 'Failed to fetch stock overview' });
+//   }
+// };
 
 
 
@@ -685,6 +693,74 @@ exports.getOliveStockOverview = async (req, res) => {
 //   }
 // };
 
+
+exports.getOliveStockOverview = async (req, res) => {
+  try {
+    const { symbol } = req.query;
+
+    // === Fetch Finnhub Data ===
+    const [quote, profile] = await Promise.all([
+      axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${FINNHUB_API_KEY}`),
+      axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${FINNHUB_API_KEY}`)
+    ]);
+
+    const olive = await Olive.findOne({symbol: symbol}).exec();
+    // if (!olive) {
+    //   return res.status(404).json({ error: 'this stocks is not in our database' });
+    //   }
+
+const currentPrice = quote.data.c;
+    // Quadrant logic (approximation)
+    let quadrant = '';
+    if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+    else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
+    else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
+    else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bd") quadrant = 'Yellow';
+
+    // Valuation bar
+    const valuationDiff = ((currentPrice - olive?.fair_value) /  olive?.fair_value) * 100;
+    let valuationColor = 'yellow';
+    if (valuationDiff < -10) valuationColor = 'green';
+    else if (valuationDiff > 10) valuationColor = 'red';
+    console.log(currentPrice)
+
+    // Olive logic
+    const olives = {
+      financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+      competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+      valuation: currentPrice <= olive?.fair_value  ? 'green' : 'gray'
+    };
+
+    const shariaCompliant = true; // Placeholder (add screening logic/API)
+
+    //     // === Zoya Shariah Screening ===
+    // const { data: zoya } = await axios.get(`https://api.zoya.finance/v1/shariah-screening`, {
+    //   params: { symbol },
+    //   headers: { Authorization: `Bearer ${process.env.ZOYA_API_KEY}` }
+    // });
+
+    // const shariaCompliant = zoya?.data?.isShariahCompliant ?? null;
+
+    return res.json({
+      company: profile.data.name || symbol,
+      logo: profile.data.logo || '',
+      exchange: profile.data.exchange || '',
+      quadrant,
+      olives,
+      shariaCompliant,
+      valuationBar: {
+        percent: valuationDiff.toFixed(2),
+        color: valuationColor,
+        currentPrice,
+         fairValue: olive?.fair_value
+      },
+    });
+
+  } catch (err) {
+    console.error('Stock overview error:', err);
+    return res.status(500).json({ error: 'Failed to fetch stock overview' });
+  }
+};
 
 exports.getRevenueBreakdown = async (req, res) => {
   const { symbol } = req.query;

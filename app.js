@@ -26,6 +26,7 @@ const subscriptionRouter = require("./routes/subscriptionPlan.route");
 
 const portfolioRoutes = require("./routes/protfolio.route");
 const financialStatementsRoutes = require("./routes/financialStatements.route");
+const oliveRoutes = require("./routes/olive.route");
 
 
 
@@ -78,6 +79,8 @@ app.use("/api/v1/stocks", stocksAdminRouter);
 
 //smart Protfolio
 app.use('/api/v1', portfolioRoutes);
+
+app.use("/api/v1",oliveRoutes)
 
 
 
