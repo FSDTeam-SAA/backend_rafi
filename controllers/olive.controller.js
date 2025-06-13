@@ -2,6 +2,7 @@
 const csv = require('csv-parser');
 const fs = require('fs');
 const Olive = require('../models/stcoks.olive.model');
+const { Readable } = require('stream');
 
 
 
@@ -45,6 +46,7 @@ exports.uploadCSV = async (req, res) => {
                 res.status(201).json({ message: 'CSV processed successfully', count: results.length });
             });
     } catch (err) {
+        console.log(err.message)
         res.status(500).json({ error: 'Failed to process CSV upload' });
     }
 }
