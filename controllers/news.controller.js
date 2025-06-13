@@ -8,7 +8,7 @@ const cloudinary = require("cloudinary").v2;
 //creating news
 exports.createNews = async (req, res) => {
     try {
-        const { newsTitle, newsDescription } = req.body;
+        const { newsTitle, newsDescription, ticker, source } = req.body;
         // const author = req.user._id; 
         const date = new Date();
         const existingNews = await News.findOne({ newsTitle });
@@ -21,7 +21,7 @@ exports.createNews = async (req, res) => {
             );
         }
         // Validate the request body
-        if (!newsTitle || !newsDescription ) {
+        if (!newsTitle || !newsDescription) {
             return res.status(400).json(
                 {
                     status: false,
@@ -50,6 +50,8 @@ exports.createNews = async (req, res) => {
             newsImage,
             date,
             // author,
+            ticker,
+            source
         });
         await news.save();
         return res.status(201).json(
@@ -71,6 +73,48 @@ exports.createNews = async (req, res) => {
         );
     }
 }
+
+
+exports.uploadCSV = async (req, res) => {
+    if (!req.file || !req.file.buffer) {
+        return res.status(400).json({ error: 'No CSV file uploaded' });
+    }
+
+    const results = [];
+
+    try {
+        const stream = Readable.from(req.file.buffer);
+        stream
+            .pipe(csv())
+            .on('data', (data) => {
+                try {
+                    results.push({
+                        newsTitle: data.newsTitle ,
+                        newsDescription: data.newsDescription ,
+                        date,
+                        // author,
+                        ticker: data.ticker ,
+                        source: data.source ,
+                    });
+                } catch (parseErr) {
+                    // Log or skip malformed row
+                    console.error('Skipping invalid row:', data, parseErr);
+                }
+            })
+            .on('end', async () => {
+                try {
+                    await News.insertMany(results, { ordered: false }); // ordered:false skips duplicates/errors
+                    res.status(201).json({ message: 'CSV processed successfully', count: results.length });
+                } catch (dbErr) {
+                    console.error('DB Error:', dbErr);
+                    res.status(500).json({ error: 'Error saving data to DB' });
+                }
+            });
+    } catch (err) {
+        console.error('Stream Error:', err);
+        res.status(500).json({ error: 'Failed to process CSV upload' });
+    }
+};
 
 //getting all news  
 exports.getAllNews = async (req, res) => {
@@ -221,7 +265,7 @@ exports.deleteNews = async (req, res) => {
             })
         }
         // await cloudinary.uploader.destroy(news.newsImage);
-        await News.findByIdAndDelete({_id: newsID});
+        await News.findByIdAndDelete({ _id: newsID });
         return res.status(200).json({
             status: true,
             message: 'News deleted successfully',
@@ -259,6 +303,32 @@ exports.merketNewsFromAPi = async (req, res) => {
             {
                 status: false,
                 message: 'Error fetching news from API',
+                error: error.message,
+            })
+
+    }
+}
+
+exports.deepReSearch = async (req, res) => {
+    try {
+        const { symbol } = req.query;
+        const filter = { source: "deep-research" }
+        if (symbol) {
+            filter.symbol = symbol
+        }
+        const news = await News.find(filter).sort({ createdAt: -1 }).limit(10);
+        return res.status(200).json({
+            status: true,
+            message: 'News fetched successfully',
+            data: news
+        })
+
+    } catch (error) {
+        console.error('Error fetching news from database:', error);
+        return res.status(500).json(
+            {
+                status: false,
+                message: 'Error fetching news from database',
                 error: error.message,
             })
 

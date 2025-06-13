@@ -1,3 +1,5 @@
+const Protfolio = require('../models/protfolio.model');
+
 // // smartPortfolioController.js
 
 // const finnhub = require('finnhub');
@@ -362,3 +364,26 @@ exports.getStockChart = async (req, res) => {
     res.status(500).json({ error: 'Error fetching chart data' });
   }
 };
+
+exports.createProtfolio = async (req, res) =>{
+  const {name} = req.body;
+  const _portfolio = await Protfolio.create({name, user: req.user._id});
+  res.status(201).send({
+    message: 'Portfolio created successfully',
+    portfolio: _portfolio
+  });
+}
+
+exports.addStockProtfolio = async (req, res) =>{
+  const {portfolioId, symbol,quantity} = req.body;
+  const portfolio = await Protfolio.findById(portfolioId);
+  if( !portfolio ){
+    return res.status(404).send({message: 'Portfolio not found'});
+    }
+    const update = await portfolio.updateOne({$push: {stocks: {symbol, quantity}}});
+    res.status(201).send({
+      message: 'Stock added to portfolio successfully',
+      portfolio: update
+    })
+
+}

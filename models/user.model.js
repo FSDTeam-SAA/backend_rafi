@@ -37,7 +37,15 @@ const userSchema = mongoose.Schema(
     followers: {
       type: Number,
       default: 0
-    }
+    },
+    refferCode: {
+      type: String,
+      unique: true
+      },
+    refferCount : {
+      type: Number,
+      default: 0
+      },
   },
   {
     timestamps: true,

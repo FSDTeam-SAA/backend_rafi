@@ -11,6 +11,7 @@ const io = new Server(server);
 
 //auth 
 const authRouter = require("./routes/auth.route");
+const userRouter = require("./routes/user.route");
 
 //admin route
 const youtubeVideosAdminRouter = require("./routes/youtubeVideosAdmin.route");
@@ -81,6 +82,8 @@ app.use("/api/v1/stocks", stocksAdminRouter);
 app.use('/api/v1', portfolioRoutes);
 
 app.use("/api/v1",oliveRoutes)
+
+app.use('/api/v1/user',userRouter)
 
 
 
