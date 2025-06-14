@@ -127,7 +127,8 @@ exports.getAllNews = async (req, res) => {
 
         // Create search filter
         const filter = {
-            newsTitle: { $regex: search, $options: 'i' }       // Case-insensitive partial match
+            newsTitle: { $regex: search, $options: 'i' } ,      // Case-insensitive partial match
+            source : "admin"
         };
 
         // Total count for pagination

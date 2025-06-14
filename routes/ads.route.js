@@ -6,7 +6,7 @@ const upload = require('../middlewares/multer.middleware');
 const router = express.Router();
 
 router.post('/create-ads',protect,isAdmin,upload.single('imageLink') ,createAd);
-router.post('/update-ads-status',protect,isAdmin ,updatePublishStatus);
+router.post('/update-ads-status/:id',protect,isAdmin ,updatePublishStatus);
 router.get('/all-ads',protect,isAdmin, getAllAds);
 router.get('/:id',protect,isAdmin, getSingleAd);
 router.patch('/:id',protect,isAdmin,upload.single('imageLink'), updateAd);
