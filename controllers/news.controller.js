@@ -8,7 +8,7 @@ const cloudinary = require("cloudinary").v2;
 //creating news
 exports.createNews = async (req, res) => {
     try {
-        const { newsTitle, newsDescription, ticker, source } = req.body;
+        const { symbol,newsTitle, newsDescription, source } = req.body;
         // const author = req.user._id; 
         const date = new Date();
         const existingNews = await News.findOne({ newsTitle });
@@ -50,7 +50,7 @@ exports.createNews = async (req, res) => {
             newsImage,
             date,
             // author,
-            ticker,
+            symbol,
             source
         });
         await news.save();
@@ -93,7 +93,7 @@ exports.uploadCSV = async (req, res) => {
                         newsDescription: data.newsDescription ,
                         date,
                         // author,
-                        ticker: data.ticker ,
+                        symbol: data.symbol ,
                         source: data.source ,
                     });
                 } catch (parseErr) {
@@ -199,7 +199,7 @@ exports.getSingleNews = async (req, res) => {
 exports.updateNews = async (req, res) => {
     try {
         const newsId = req.params.id;
-        const { newsTitle, newsDescription } = req.body;
+        const { newsTitle, newsDescription,symbol } = req.body;
         // const author = req.user._id;
 
         const existingNews = await News.findById(newsId);
@@ -212,7 +212,6 @@ exports.updateNews = async (req, res) => {
             );
         }
 
-        let newsImage
         if (req.file) {
             try {
                 await cloudinary.uploader.destroy(existingNews.newsImage)
@@ -227,9 +226,9 @@ exports.updateNews = async (req, res) => {
         }
 
         // Update the news item
-        existingNews.newsTitle = newsTitle;
-        existingNews.newsDescription = newsDescription;
-        existingNews.newsImage = newsImage;
+        if(newsTitle) existingNews.newsTitle = newsTitle;
+        if(newsDescription) existingNews.newsDescription = newsDescription;
+        if(symbol) existingNews.symbol = symbol;
 
         // existingNews.author = author;
         await existingNews.save();
