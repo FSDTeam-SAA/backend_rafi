@@ -6,8 +6,8 @@ const { createblog, getAllblog, getSingleblog, updateblog, deleteblog } = requir
 const router = express.Router();
 
 router.post('/create-blog',protect,isAdmin,upload.single('imageLink') ,createblog);
-router.get('/all-blog',protect,isAdmin, getAllblog);
-router.get('/:id',protect,isAdmin, getSingleblog);
+router.get('/all-blog',protect, getAllblog);
+router.get('/:id',protect, getSingleblog);
 router.patch('/:id',protect,isAdmin,upload.single('imageLink'), updateblog);
 router.delete('/:id',protect,isAdmin, deleteblog);
 

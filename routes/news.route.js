@@ -6,9 +6,9 @@ const router = express.Router();
 router.get('/deep-research',deepReSearch)
 router.get('/market-news',merketNewsFromAPi)
 router.post('/news/upload', upload.single('file'),uploadCSV)
-router.get('/all-news',protect,isAdmin, getAllNews);    
+router.get('/all-news',protect, getAllNews);    
 router.post('/create-news',protect,isAdmin,upload.single('imageLink'), createNews);
-router.get('/:id',protect,isAdmin, getSingleNews);
+router.get('/:id',protect, getSingleNews);
 router.patch('/:id',protect,isAdmin,upload.single('imageLink'), updateNews);
 router.delete('/:id',protect,isAdmin, deleteNews);
 

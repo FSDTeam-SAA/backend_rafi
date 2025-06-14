@@ -229,7 +229,7 @@ const resetPassword = async (req, res) => {
     }
 
     const hash = await bcrypt.hash(password, 10)
-    await User.findByIdAndUpdate(user._id, { password: hash })
+    await User.findByIdAndUpdate(user._id, { password: hash, password_reset_token: null })
     res.json({ success: true, message: 'Password reset successfully' })
   } catch (error) {
     res
