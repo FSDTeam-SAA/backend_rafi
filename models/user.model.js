@@ -46,6 +46,9 @@ const userSchema = mongoose.Schema(
       type: Number,
       default: 0
       },
+      password_reset_token: {
+        type: String,
+        },
   },
   {
     timestamps: true,

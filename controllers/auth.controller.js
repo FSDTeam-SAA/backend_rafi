@@ -8,7 +8,7 @@ const bcrypt = require('bcrypt')
 // register user
 const registration = async (req, res) => {
   try {
-    const { userName, email, password, confirmPassword } = req.body
+    const { userName,phoneNumber, email, password, confirmPassword } = req.body
 
     if (!userName || !email) {
       return res
@@ -27,7 +27,7 @@ const registration = async (req, res) => {
       return res.status(400).json(apiResponse(400, 'user already exists'))
     }
 
-    const user = await User.create({ userName, email, password })
+    const user = await User.create({ userName, email, password,phoneNumber })
 
     return res
       .status(201)
@@ -182,7 +182,7 @@ const forgotPassword = async (req, res) => {
           <div class="content">
             <p>Hello,</p>
             <p>You recently requested to reset your password. Here is Your OTP:</p>
-            <h1>${token}</h1>
+            <h1>${otp}</h1>
             <p>If you didn’t request this, please ignore this email.</p>
           </div>
           <div class="footer">
@@ -210,7 +210,7 @@ const resetPassword = async (req, res) => {
   try {
     const { email,otp, password } = req.body
 
-    if (!token || !password) {
+    if (!email || !otp || !password) {
       res
         .statusA(404)
         .json({ success: false, message: 'All field are required!' })
@@ -223,13 +223,13 @@ const resetPassword = async (req, res) => {
     if (!user.password_reset_token) {
       res.status(404).json({ success: false, message: 'Password reset token is invalid !' })
     }
-    const verify = jwt.decode( otp, process.env.SECRET_KEY)
+    const verify = jwt.decode( user.password_reset_token, process.env.JWT_ACCESS_SECRET)
     if (verify.otp !== otp) {
       res.status(404).json({ success: false, message: 'Invalid OTP!' })
     }
 
     const hash = await bcrypt.hash(password, 10)
-    await User.findByIdAndUpdate(decode.id, { password: hash })
+    await User.findByIdAndUpdate(user._id, { password: hash })
     res.json({ success: true, message: 'Password reset successfully' })
   } catch (error) {
     res
