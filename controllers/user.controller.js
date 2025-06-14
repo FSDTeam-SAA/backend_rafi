@@ -3,11 +3,10 @@ const User = require("../models/user.model");
 
 exports.updateUser = async (req, res) => {
   try {
-    const { id, userName, phoneNumber, address } = req.body
+    const { id,email, userName, phoneNumber, address } = req.body
 
     if (!userName || !email) {
-      return res
-        .status(400).send({
+      return res.status(400).send({
           succuss: false,
           message: "Please enter all fields",
           
@@ -29,13 +28,13 @@ exports.updateUser = async (req, res) => {
 
 
     return res
-      .status(201).send({
+    .status(201).send({
         success: true,
         message: "User updated successfully",
         data: user
       })
   } catch (error) {
-    return res.j.status(500).send({
+    return res.status(500).send({
       success: false,
       message: "Internal Server Error",
       error: error.message
