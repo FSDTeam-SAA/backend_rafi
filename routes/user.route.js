@@ -5,8 +5,8 @@ const { updateUser, GetAllReffer } = require('../controllers/user.controller');
 
 const router = express.Router();
 
+router.get('/get-refer',GetAllReffer)
 router.post('/update-user',protect,upload.single('imageLink') ,updateUser);
-router.get('/get-refer',protect,GetAllReffer)
 
 
 

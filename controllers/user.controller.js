@@ -7,8 +7,11 @@ exports.updateUser = async (req, res) => {
 
     if (!userName || !email) {
       return res
-        .status(400)
-        .json(apiResponse(400, 'username and email are required'))
+        .status(400).send({
+          succuss: false,
+          message: "Please enter all fields",
+          
+        })
     }
     let imageLink
     if (req.file) {
@@ -26,10 +29,17 @@ exports.updateUser = async (req, res) => {
 
 
     return res
-      .status(201)
-      .json(apiResponse(201, 'user update successfull', user))
+      .status(201).send({
+        success: true,
+        message: "User updated successfully",
+        data: user
+      })
   } catch (error) {
-    return res.json(apiResponse(500, 'server error', error.message))
+    return res.j.status(500).send({
+      success: false,
+      message: "Internal Server Error",
+      error: error.message
+    })
   }
 }
 
