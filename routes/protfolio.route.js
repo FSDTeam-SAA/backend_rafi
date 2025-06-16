@@ -1,5 +1,6 @@
 const express = require('express');
-const { getPortfolioOverview, getEarningsCalendar, getPerformanceBreakdown, getDividends, getAssetAllocation, getStockMetrics, getStockChart, getTopMovers, createProtfolio, addStockProtfolio } = require('../controllers/smartProtfolio.controller');
+const { getPortfolioOverview, getEarningsCalendar, getPerformanceBreakdown, getDividends, getAssetAllocation, getStockMetrics, getStockChart, getTopMovers, createProtfolio, addStockProtfolio, getProtfolio } = require('../controllers/smartProtfolio.controller');
+const { protect } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
 // Portfolio Overview
@@ -26,8 +27,11 @@ router.get('/portfolio/metrics/:symbol', getStockMetrics);
 // Chart Historical Data
 router.get('/portfolio/chart', getStockChart);
 
-router.post('/protfolio/create',createProtfolio)
 
-router.post('/protfolio/add-stock',addStockProtfolio)
+router.get('/portfolio/get',protect, getProtfolio);
+
+router.post('/protfolio/create',protect,createProtfolio)
+
+router.post('/protfolio/add-stock',protect,addStockProtfolio)
 
 module.exports = router;

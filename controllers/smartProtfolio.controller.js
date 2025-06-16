@@ -1,3 +1,4 @@
+const { default: axios } = require('axios');
 const Protfolio = require('../models/protfolio.model');
 
 // // smartPortfolioController.js
@@ -290,19 +291,92 @@ exports.getPerformanceBreakdown = async (req, res) => {
   }
 };
 
-// Dividends Info
 exports.getDividends = async (req, res) => {
   const { symbol } = req.params;
-  try {
-    const from = moment().subtract(1, 'year').format('YYYY-MM-DD');
-    const to = moment().format('YYYY-MM-DD');
 
-    finnhubClient.stockDividends(symbol, from, to, (error, data) => {
-      if (error) return res.status(500).json({ error });
-      res.json(data);
+  const from = moment().subtract(8, 'years').format('YYYY-MM-DD');
+  const to = moment().format('YYYY-MM-DD');
+  console.log( from, to );
+
+  try {
+    // Fetch dividend history
+    const dividendRes = await axios.get(`https://finnhub.io/api/v1/stock/dividend`, {
+      params: { symbol, from, to, token: process.env.FINHUB_API_KEY }
     });
+
+    const dividends = dividendRes.data || [];
+
+    // Calculate total dividends in last 12 months
+    const lastYear = moment().subtract(1, 'year');
+    const annualDividends = dividends
+      .filter(d => moment(d.paymentDate).isAfter(lastYear))
+      .reduce((sum, d) => sum + (d.amount || 0), 0);
+
+    // Current Price
+    const quoteRes = await axios.get(`https://finnhub.io/api/v1/quote`, {
+      params: { symbol, token: process.env.FINHUB_API_KEY }
+    });
+    const currentPrice = quoteRes.data?.c || 0;
+
+    const dividendYield = currentPrice ? (annualDividends / currentPrice) * 100 : null;
+
+    // EPS from metrics
+    const metricRes = await axios.get(`https://finnhub.io/api/v1/stock/metric`, {
+      params: { symbol, metric: 'all', token: process.env.FINHUB_API_KEY }
+    });
+
+    const eps = metricRes.data.metric?.epsInclExtraItemsTTM || null;
+    const payoutRatio = eps ? (annualDividends / eps) * 100 : null;
+
+    // Dividend Growth (year-over-year)
+    const grouped = {};
+    for (const d of dividends) {
+      const year = moment(d.payDate).year();
+      grouped[year] = (grouped[year] || 0) + (d.amount || 0);
+    }
+    const years = Object.keys(grouped).sort();
+    let dividendGrowth = null;
+    if (years.length >= 2) {
+      const prev = grouped[years[years.length - 2]];
+      const curr = grouped[years[years.length - 1]];
+      if (prev > 0) {
+        dividendGrowth = ((curr - prev) / prev) * 100;
+      }
+    }
+
+    // Chart data (yearly yield)
+    const chartforAmmount = years.map(year => {
+      const total = grouped[year];
+      return {
+        year,
+        amount: total.toFixed(2)
+      };
+    });
+
+        // Chart data (yearly yield)
+    const chartforYeild = years.map(year => {
+      const total = grouped[year];
+      return {
+        year,
+        yield: currentPrice ? ((total / currentPrice) * 100).toFixed(2) : null,
+      };
+    });
+
+    return res.json({
+      symbol,
+      currentPrice,
+      annualDividends: annualDividends.toFixed(2),
+      dividendYield: dividendYield?.toFixed(2),
+      payoutRatio: payoutRatio?.toFixed(2),
+      dividendGrowth: dividendGrowth?.toFixed(2),
+      chartforYeild,
+      chartforAmmount,
+      rawDividends: dividends
+    });
+
   } catch (error) {
-    res.status(500).json({ error: 'Error fetching dividend info' });
+    console.error('Dividend error:', error.response?.data || error.message);
+    return res.status(500).json({ error: 'Error fetching dividend info' });
   }
 };
 
@@ -374,6 +448,11 @@ exports.createProtfolio = async (req, res) =>{
   });
 }
 
+exports.getProtfolio = async (req, res) =>{
+  const protofolio = await Protfolio.find({user: req.user._id})
+  return res.status( 200).json(protofolio);
+}
+
 exports.addStockProtfolio = async (req, res) =>{
   const {portfolioId, symbol,quantity} = req.body;
   const portfolio = await Protfolio.findById(portfolioId);
@@ -387,3 +466,5 @@ exports.addStockProtfolio = async (req, res) =>{
     })
 
 }
+
+
