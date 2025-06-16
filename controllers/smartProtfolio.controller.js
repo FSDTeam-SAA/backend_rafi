@@ -453,18 +453,54 @@ exports.getProtfolio = async (req, res) =>{
   return res.status( 200).json(protofolio);
 }
 
-exports.addStockProtfolio = async (req, res) =>{
-  const {portfolioId, symbol,quantity} = req.body;
-  const portfolio = await Protfolio.findById(portfolioId);
-  if( !portfolio ){
-    return res.status(404).send({message: 'Portfolio not found'});
-    }
-    const update = await portfolio.updateOne({$push: {stocks: {symbol, quantity}}});
-    res.status(201).send({
-      message: 'Stock added to portfolio successfully',
-      portfolio: update
-    })
+exports.addStockProtfolio = async (req, res) => {
+  const { portfolioId, symbol, quantity } = req.body;
 
-}
+  const portfolio = await Protfolio.findById(portfolioId);
+  if (!portfolio) {
+    return res.status(404).send({ message: 'Portfolio not found' });
+  }
+
+  const stockIndex = portfolio.stocks.findIndex(stock => stock.symbol === symbol);
+
+  if (stockIndex !== -1) {
+    // Stock exists, update quantity
+    portfolio.stocks[stockIndex].quantity = quantity;
+  } else {
+    // Stock doesn't exist, add new entry
+    portfolio.stocks.push({ symbol, quantity });
+  }
+
+  await portfolio.save();
+
+  res.status(201).send({
+    message: stockIndex !== -1 ? 'Stock quantity updated' : 'Stock added to portfolio',
+    portfolio,
+  });
+};
+
+exports.deleteStockFromPortfolio = async (req, res) => {
+  const { portfolioId, symbol } = req.body;
+
+  const portfolio = await Protfolio.findById(portfolioId);
+  if (!portfolio) {
+    return res.status(404).send({ message: 'Portfolio not found' });
+  }
+
+  const stockIndex = portfolio.stocks.findIndex(s => s.symbol === symbol);
+  if (stockIndex === -1) {
+    return res.status(404).send({ message: 'Stock not found in portfolio' });
+  }
+
+  portfolio.stocks.splice(stockIndex, 1); // remove the stock
+  await portfolio.save();
+
+  res.status(200).send({
+    message: 'Stock removed from portfolio',
+    portfolio,
+  });
+};
+
+
 
 
