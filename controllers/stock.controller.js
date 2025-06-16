@@ -923,7 +923,7 @@ exports.getQualityStocks = async (req, res) => {
         },
         oneMonthReturn: stock.oneMonthReturn || '0.00%', // if stored
         marketCap: stock.marketCap || '$0',
-        lastRatingDate: stock.lastRatingDate || '-',
+        lastRatingDate: stock.updatedAt || '-',
         sector: stock.sector || 'N/A'
       };
     }));

@@ -1,5 +1,5 @@
 const express = require('express');
-const { createNews, getAllNews, getSingleNews, updateNews, deleteNews, merketNewsFromAPi, deepReSearch, uploadCSV } = require("../controllers/news.controller");
+const { createNews, getAllNews, getSingleNews, updateNews, deleteNews, merketNewsFromAPi, deepReSearch, uploadCSV, getMultipleCompanyNews } = require("../controllers/news.controller");
 const { protect, isAdmin } = require('../middlewares/auth.middleware');
 const upload = require('../middlewares/multer.middleware');
 const router = express.Router();
@@ -11,6 +11,8 @@ router.post('/create-news',protect,isAdmin,upload.single('imageLink'), createNew
 router.get('/:id',protect, getSingleNews);
 router.patch('/:id',protect,isAdmin,upload.single('imageLink'), updateNews);
 router.delete('/:id',protect,isAdmin, deleteNews);
+
+router.post ("/get-protfolio-news",getMultipleCompanyNews)
 
 
 

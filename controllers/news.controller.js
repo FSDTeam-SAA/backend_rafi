@@ -1,7 +1,9 @@
 
+const { default: axios } = require('axios');
 const News = require('../models/newsAdmin.model');
 const User = require('../models/user.model');
 const { uploadOnCloudinary } = require('../utils/cloudnary');
+const moment = require('moment');
 const cloudinary = require("cloudinary").v2;
 
 
@@ -334,3 +336,39 @@ exports.deepReSearch = async (req, res) => {
 
     }
 }
+
+exports.getMultipleCompanyNews = async (req, res) => {
+  try {
+    const { symbols } = req.body; // Expecting an array of symbols like ["AAPL", "GOOGL"]
+    if (!Array.isArray(symbols) || symbols.length === 0) {
+      return res.status(400).json({ error: 'symbols array is required in body' });
+    }
+
+    const from = moment().subtract(7, 'days').format('YYYY-MM-DD');
+    const to = moment().format('YYYY-MM-DD');
+
+    const results = await Promise.all(
+      symbols.map(async (symbol) => {
+        try {
+          const { data } = await axios.get('https://finnhub.io/api/v1/company-news', {
+            params: {
+              symbol: symbol.toUpperCase(),
+              from,
+              to,
+              token: process.env.FINHUB_API_KEY
+            }
+          });
+          return { symbol: symbol.toUpperCase(), news: data };
+        } catch (err) {
+            console.error('Error fetching news for symbol:', symbol, err);
+          return { symbol: symbol.toUpperCase(), error: 'Failed to fetch news' };
+        }
+      })
+    );
+
+    res.json(results);
+  } catch (err) {
+    console.error('Multi-symbol news fetch error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
