@@ -453,6 +453,12 @@ exports.getProtfolio = async (req, res) =>{
   return res.status( 200).json(protofolio);
 }
 
+exports.getProtfolioById = async (req, res) =>{
+  const id = req.params.id;
+  const protofolio = await Protfolio.findOne({_id: id,user: req.user._id})
+  return res.status( 200).json(protofolio);
+}
+
 exports.addStockProtfolio = async (req, res) => {
   const { portfolioId, symbol, quantity } = req.body;
 
