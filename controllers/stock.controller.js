@@ -407,32 +407,65 @@ exports.getStockTargetPrice = async (req, res) => {
 };
 
 
+// exports.getStockCashFlow = async (req, res) => {
+//   try {
+//     const { symbol } = req.query;
+//     if (!symbol) return res.status(400).json({ error: 'Missing symbol parameter' });
+
+//     const { data } = await axios.get('https://finnhub.io/api/v1/stock/financials-reported', {
+//       params: {
+//         symbol,
+//         token: FINNHUB_API_KEY
+//       }
+//     });
+
+//     const reports = data.data || [];
+
+//     // Extract cash flow items from the latest report
+//     const cashFlowReport = reports.find(report => {
+//       return report.report?.ic && Object.keys(report.report.ic).length > 0;
+//     });
+
+//     res.json({
+//       symbol,
+//       cashFlow: cashFlowReport || null
+//     });
+//   } catch (err) {
+//     console.error('Error fetching cash flow:', err.message);
+//     res.status(500).json({ error: 'Failed to fetch cash flow data' });
+//   }
+// };
+
 exports.getStockCashFlow = async (req, res) => {
+  const { symbol } = req.query;
+  if (!symbol) return res.status(400).json({ error: 'Missing symbol parameter' });
+
   try {
-    const { symbol } = req.query;
-    if (!symbol) return res.status(400).json({ error: 'Missing symbol parameter' });
-
-    const { data } = await axios.get('https://finnhub.io/api/v1/stock/financials-reported', {
-      params: {
-        symbol,
-        token: FINNHUB_API_KEY
-      }
+    // Fetch standardized cash flow statement (uses /financials endpoint with cf)
+    const { data } = await axios.get('https://finnhub.io/api/v1/stock/financials', {
+      params: { symbol, statement: 'cf', freq: 'annual', token: process.env.FINHUB_API_KEY }
     });
 
-    const reports = data.data || [];
+    if (!data || !data.financials?.length) {
+      return res.status(404).json({ error: 'No cash flow data available' });
+    }
+    console.log(data.financials)
 
-    // Extract cash flow items from the latest report
-    const cashFlowReport = reports.find(report => {
-      return report.report?.ic && Object.keys(report.report.ic).length > 0;
-    });
+    // Map and format each year's cash flow data
+    const cashFlows = data.financials.map(entry => ({
+      year: entry.year,
+      operatingCashFlow: entry.netOperatingCashFlow || null,
+      investingCashFlow: entry.netInvestingCashFlow || null,
+      financingCashFlow: entry.netCashFinancingActivities || null,
+      // freeCashFlow: entry.annual.freeCashflow || null,
+      // endCash: entry.annual.cashAndCashEquivalents || null
+    }));
 
-    res.json({
-      symbol,
-      cashFlow: cashFlowReport || null
-    });
+    res.json({ symbol: symbol.toUpperCase(), cashFlows });
+
   } catch (err) {
-    console.error('Error fetching cash flow:', err.message);
-    res.status(500).json({ error: 'Failed to fetch cash flow data' });
+    console.error('Error fetching cash flow detailed:', err.response?.data || err.message);
+    res.status(500).json({ error: 'Failed to fetch detailed cash flow data' });
   }
 };
 
