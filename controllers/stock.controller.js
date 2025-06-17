@@ -306,7 +306,7 @@ exports.getDailyGainersLosers = async (req, res) => {
         // });
 
         // const sample = allSymbols.slice(0, 100);
-        const sample = [{ symbol: "AAPL" }, { symbol: "GOOG" }, { symbol: "AMZN" }, { symbol: "FB" }];
+        const sample = [{ symbol: "AAPL" }, { symbol: "GOOG" }, { symbol: "AMZN" }, { symbol: "MSFT" }];
 
         // Step 2: Get quote data for each symbol
         const quotes = await Promise.all(sample.map(async (stock) => {
