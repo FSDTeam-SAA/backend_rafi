@@ -856,49 +856,60 @@ exports.getRevenueBreakdown = async (req, res) => {
   }
 };
 
-
 exports.getStockOfTheMonth = async (req, res) => {
   try {
     const monthName = new Date().toLocaleString('default', { month: 'long' });
-    const docs = await Olive.find({ financial_health: 'good', compatitive_advantage: 'good' })
-      .sort({ fair_value: 1 }) // pick most undervalued
-      .limit(1);
 
-    if (!docs.length) return res.status(404).json({ error: 'No matching records' });
+    const stocks = await Olive.find({ financial_health: 'good', compatitive_advantage: 'good' })
+      .sort({ fair_value: 1 }); // most undervalued at the top
 
-    const stock = docs[0];
-    const [rec, pt] = await Promise.all([
-      axios.get('https://finnhub.io/api/v1/stock/recommendation', {
-        params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY }
-      }),
-      axios.get('https://finnhub.io/api/v1/stock/price-target', {
-        params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY }
+    if (!stocks.length) return res.status(404).json({ error: 'No matching records' });
+
+    const enrichedStocks = await Promise.all(
+      stocks.map(async (stock) => {
+        try {
+          const [rec, pt] = await Promise.all([
+            axios.get('https://finnhub.io/api/v1/stock/recommendation', {
+              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY }
+            }),
+            axios.get('https://finnhub.io/api/v1/stock/price-target', {
+              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY }
+            })
+          ]);
+
+          const latestRec = rec.data[0] || {};
+          const latestPt = pt.data || {};
+
+          return {
+            symbol: stock.symbol,
+            stockRating: latestRec.rating || 'N/A',
+            analystTarget: `$${latestPt.targetMean?.toFixed(2) || '0.00'} (${latestPt.targetPercent?.toFixed(2) || '0.00'}%)`,
+            ratingTrend: {
+              buy: latestRec.buy || 0,
+              hold: latestRec.hold || 0,
+              sell: latestRec.sell || 0
+            },
+            monthChange: stock.monthChange || '0.00%', // optional if stored
+            marketCap: stock.marketCap || '$0',
+            month: monthName,
+            sector: stock.sector || 'N/A'
+          };
+        } catch (err) {
+          return {
+            symbol: stock.symbol,
+            error: 'Failed to fetch rating/price target data'
+          };
+        }
       })
-    ]);
-    const latestRec = rec.data[0] || {};
-    const latestPt = pt.data || {};
+    );
 
-    const data = {
-      symbol: stock.symbol,
-      stockRating: latestRec.rating || 'N/A',
-      analystTarget: `$${latestPt.targetMean?.toFixed(2) || '0.00'} (${latestPt.targetPercent?.toFixed(2) || '0.00'}%)`,
-      ratingTrend: {
-        buy: latestRec.buy || 0,
-        hold: latestRec.hold || 0,
-        sell: latestRec.sell || 0
-      },
-      monthChange: stock.monthChange || '0.00%', // if stored
-      marketCap: stock.marketCap || '$0',
-      month: monthName,
-      sector: stock.sector || 'N/A'
-    };
-
-    res.json({ stockOfTheMonth: data });
+    res.json({ stockOfTheMonth: enrichedStocks });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: 'Failed to fetch stock of the month' });
+    res.status(500).json({ error: 'Failed to fetch stocks of the month' });
   }
 };
+
 
 exports.getQualityStocks = async (req, res) => {
   try {
