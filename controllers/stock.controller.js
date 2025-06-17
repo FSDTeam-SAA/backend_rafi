@@ -449,7 +449,7 @@ exports.getStockCashFlow = async (req, res) => {
     if (!data || !data.financials?.length) {
       return res.status(404).json({ error: 'No cash flow data available' });
     }
-    console.log(data.financials)
+    // console.log(data.financials)
 
     // Map and format each year's cash flow data
     const cashFlows = data.financials.map(entry => ({
