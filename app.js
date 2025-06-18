@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const WebSocket = require('ws');
 
 const app = express();
 
@@ -28,6 +29,7 @@ const subscriptionRouter = require("./routes/subscriptionPlan.route");
 const portfolioRoutes = require("./routes/protfolio.route");
 const financialStatementsRoutes = require("./routes/financialStatements.route");
 const oliveRoutes = require("./routes/olive.route");
+const { default: axios } = require("axios");
 
 
 
@@ -88,33 +90,74 @@ app.use('/api/v1/user',userRouter)
 
 
 
-//Configure the Socket Event and handle the connection
-io.on("connection", (socket) => {
-  console.log("a user connected",socket.id);
-  // Handle disconnect
-  socket.on("disconnect", () =>
-    console.log("a user disconnected")
-  );
-  // Handle message
-  socket.on("message", (message) =>
-    console.log(message)
-  );
-  // Handle join
-  socket.on("join", (room) =>
-    console.log(`User joined room ${room}`)
-  );
-  // Handle leave
-  socket.on("leave", (room) =>
-    console.log(`User left room ${room}`)
-  );
-  // // Handle typing
-  // socket.on("typing", (room) =>
-  //   console.log(`User is typing in room ${room}`)
-  // );
-  // // Handle stopTyping
-  // socket.on("stopTyping", (room) =>
-  //   console.log(`User stopped typing in room ${room}`)
-  // );
+const FINNHUB_TOKEN = process.env.FINHUB_API_KEY; // Replace with your real key
+
+// Map to store open prices
+const openPrices = new Map();
+
+// Create Finnhub WebSocket
+const finnhubSocket = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_TOKEN}`);
+
+// Subscribe to symbol updates
+const subscribeSymbol = (symbol) => {
+  finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
+};
+
+// Get open price via REST API
+const fetchOpenPrice = async (symbol) => {
+  try {
+    const { data } = await axios.get(`https://finnhub.io/api/v1/quote`, {
+      params: { symbol, token: FINNHUB_TOKEN }
+    });
+    // console.log(data, symbol)
+    if (data && data.pc) {
+      openPrices.set(symbol, data.pc);
+    }
+  } catch (err) {
+    console.error(`Failed to fetch open price for ${symbol}:`, err.message);
+  }
+};
+
+// WebSocket message from Finnhub
+finnhubSocket.on('message', (data) => {
+  const parsed = JSON.parse(data);
+  console.log(parsed)
+  if (parsed.type === 'trade') {
+    parsed.data.forEach((trade) => {
+      const symbol = trade.s;
+      const currentPrice = trade.p;
+      const openPrice = openPrices.get(symbol);
+
+      if (!openPrice) return;
+
+      const change = (currentPrice - openPrice).toFixed(2);
+      const percent = ((change / openPrice) * 100).toFixed(2);
+
+      io.emit('stockUpdate', {
+        symbol,
+        currentPrice,
+        change,
+        percent
+      });
+    });
+  }
+});
+
+// Socket.IO connection
+io.on('connection', async (socket) => {
+  console.log('User connected:', socket.id);
+
+  const symbols = ['AAPL', 'GOOGL', 'MSFT', 'SPX','AMZN']; // Add your stock symbols here
+
+  // Fetch opening prices once at connection
+  for (const symbol of symbols) {
+    await fetchOpenPrice(symbol);
+    subscribeSymbol(symbol);
+  }
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
 });
 
 

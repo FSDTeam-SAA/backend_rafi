@@ -26,7 +26,8 @@
     "multer": "^2.0.0",
     "nodemailer": "^7.0.3",
     "quick-response": "^1.0.5",
-    "socket.io": "^4.8.1"
+    "socket.io": "^4.8.1",
+    "ws": "^8.18.2"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"
