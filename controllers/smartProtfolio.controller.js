@@ -192,34 +192,52 @@ exports.getPortfolioOverview = async (req, res) => {
     const portfolio = req.body.holdings; // [{ symbol: "AAPL", shares: 10 }]
     let totalValue = 0, dailyChange = 0;
 
-    const detailed = await Promise.all(portfolio.map(holding => {
-      return new Promise((resolve, reject) => {
-        finnhubClient.quote(holding.symbol, (error, quote) => {
-          if (error) return reject(error);
+const detailed = await Promise.all(
+  portfolio.map(async (holding) => {
+    try {
+      const companyProfile = await new Promise((resolve, reject) =>
+        finnhubClient.companyProfile2({ symbol: holding.symbol }, (err, data) =>
+          err ? reject(err) : resolve(data)
+        )
+      );
 
-          const value = quote.c * holding.shares;
-          const change = quote.d * holding.shares;
 
-          totalValue += value;
-          dailyChange += change;
+      const quote = await new Promise((resolve, reject) =>
+        finnhubClient.quote(holding.symbol, (err, data) =>
+          err || !data || data.c === 0 ? reject(err || new Error('Invalid quote')) : resolve(data)
+        )
+      );
 
-          resolve({
-            symbol: holding.symbol,
-            shares: holding.shares,
-            price: quote.c,
-            change: quote.d,
-            percent: quote.dp,
-            value: value.toFixed(2)
-          });
-        });
-      });
-    }));
+      const value = quote.c * holding.shares;
+      const change = quote.d * holding.shares;
+
+      totalValue += value;
+      dailyChange += change;
+
+      return {
+        logo: companyProfile.logo || '',
+        name: companyProfile.name || '',
+        symbol: holding.symbol,
+        shares: holding.shares,
+        price: quote.c,
+        change: quote.d,
+        percent: quote.dp,
+        value: value.toFixed(2)
+      };
+    } catch (err) {
+      console.warn(`Skipping ${holding.symbol}:`, err.message);
+      return null;
+    }
+  })
+);
+
+const filteredDetailed = detailed.filter(Boolean);
 
     res.status(200).json({
       totalHoldings: totalValue.toFixed(2),
       dailyReturn: dailyChange.toFixed(2),
       dailyReturnPercent: ((dailyChange / totalValue) * 100).toFixed(2),
-      holdings: detailed
+      holdings: filteredDetailed
     });
   } catch (err) {
     res.status(500).json({ error: "Portfolio overview failed", detail: err.message });
