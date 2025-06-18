@@ -525,6 +525,42 @@ exports.deleteStockFromPortfolio = async (req, res) => {
   });
 };
 
+exports.getCalendarEvents = async (req, res) => {
+  try {
+    const from = moment().format('YYYY-MM-DD');
+    const to = moment().add(3, 'months').format('YYYY-MM-DD');
 
+    const [earningsRes, dividendsRes] = await Promise.all([
+      axios.get('https://finnhub.io/api/v1/calendar/earnings', {
+        params: { from, to, token: process.env.FINHUB_API_KEY }
+      }),
+      axios.get('https://finnhub.io/api/v1/calendar/dividends', {
+        params: { from, to, token: process.env.FINHUB_API_KEY }
+      })
+    ]);
+
+    const earnings = earningsRes.data.earningsCalendar || [];
+    const dividends = dividendsRes.data.dividends || [];
+
+    const formatEvent = (e, type) => ({
+      
+      symbol: e.symbol,
+      type,
+      date: e.date || e.exDate
+    });
+
+    const events = [
+      ...earnings.map(e => formatEvent(e, 'Earnings Release')),
+      ...dividends.map(e => formatEvent(e, 'Ex-Dividend Date'))
+    ];
+
+    events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    res.json({ total: events.length, events });
+  } catch (err) {
+    console.error('Error fetching calendar events:', err.message);
+    res.status(500).json({ error: 'Failed to fetch calendar events' });
+  }
+};
 
 
