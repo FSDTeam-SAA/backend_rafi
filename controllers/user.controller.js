@@ -3,9 +3,9 @@ const User = require("../models/user.model");
 
 exports.updateUser = async (req, res) => {
   try {
-    const { id, email, userName, phoneNumber, address } = req.body
+    const { id, email, phoneNumber, address,fullName } = req.body
 
-    if (!userName || !email) {
+    if (!fullName || !email) {
       return res.status(400).send({
         succuss: false,
         message: "Please enter all fields",
@@ -24,7 +24,7 @@ exports.updateUser = async (req, res) => {
         });
       }
     }
-    const user = await User.findByIdAndUpdate(id, { $set: { userName, phoneNumber, address, profilePhoto: imageLink } }, { new: true })
+    const user = await User.findByIdAndUpdate(id, { $set: { fullName, phoneNumber, address, profilePhoto: imageLink } }, { new: true })
 
 
     return res

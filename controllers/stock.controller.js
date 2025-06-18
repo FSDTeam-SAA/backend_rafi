@@ -19,8 +19,8 @@ async function getTrendingSymbols(limit = 5) {
         },
     });
 
-    // const sample = symbols.slice(0, 50); // or replace with fixed: [{ symbol: "AAPL" }, ...]
-    const sample = [{ symbol: "AAPL" }, { symbol: "GOOG" }, { symbol: "AMZN" }, { symbol: "FB" }];
+    const sample = symbols.slice(0, 50); // or replace with fixed: [{ symbol: "AAPL" }, ...]
+    // const sample = [{ symbol: "AAPL" }, { symbol: "GOOG" }, { symbol: "AMZN" }, { symbol: "FB" }];
     const filtered = [];
 
     for (let stock of sample) {
