@@ -279,6 +279,20 @@ const changePassword = async (req, res) => {
       .json({ success: false, message: 'Failed to change password' })
   }
 }
+const logout = async (req, res) => {
+  const user = req.user?._id;
+  const user1 = await User.findByIdAndUpdate(
+    user,
+    { refreshToken: "" },
+    { new: true }
+  );
+  sendResponse(res, {
+    statusCode: httpStatus.OK,
+    success: true,
+    message: "Logged out successfully",
+    data: "",
+  });
+}
 
 
 module.exports = {
@@ -287,4 +301,5 @@ module.exports = {
   forgotPassword,
   resetPassword,
   changePassword,
+  logout
 }
