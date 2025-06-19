@@ -8,7 +8,12 @@ const app = express();
 
 //Server Create For Socket.io
 const server = createServer(app);
-const io = new Server(server);
+const io = new Server(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"],
+  },
+});
 
 //auth 
 const authRouter = require("./routes/auth.route");
@@ -109,10 +114,27 @@ const fetchOpenPrice = async (symbol) => {
     const { data } = await axios.get(`https://finnhub.io/api/v1/quote`, {
       params: { symbol, token: FINNHUB_TOKEN }
     });
+        const { data:data2 } = await axios.get(`https://finnhub.io/api/v1/stock/profile2`, {
+      params: { symbol, token: FINNHUB_TOKEN }
+    });
     // console.log(data, symbol)
-    if (data && data.pc) {
-      openPrices.set(symbol, data.pc);
+    const profile = {
+      pc: data.pc,
+      logo: data2.logo,
+      name: data2.name,
     }
+    if (data && data.pc) {
+      openPrices.set(symbol, profile);
+    }
+    io.emit("stockUpdate",{
+        symbol,
+        currentPrice : data.c,
+        change: data.d,
+        percent: data.dp,
+        logo: data2.logo,
+        name: data2.name
+
+    })
   } catch (err) {
     console.error(`Failed to fetch open price for ${symbol}:`, err.message);
   }
@@ -128,16 +150,19 @@ finnhubSocket.on('message', (data) => {
       const currentPrice = trade.p;
       const openPrice = openPrices.get(symbol);
 
+
       if (!openPrice) return;
 
-      const change = (currentPrice - openPrice).toFixed(2);
-      const percent = ((change / openPrice) * 100).toFixed(2);
+      const change = (currentPrice - openPrice.pc).toFixed(2);
+      const percent = ((change / openPrice.pc) * 100).toFixed(2);
 
       io.emit('stockUpdate', {
         symbol,
         currentPrice,
         change,
-        percent
+        percent,
+        logo: openPrice.logo,
+        name: openPrice.name
       });
     });
   }
@@ -147,7 +172,7 @@ finnhubSocket.on('message', (data) => {
 io.on('connection', async (socket) => {
   console.log('User connected:', socket.id);
 
-  const symbols = ['AAPL', 'GOOGL', 'MSFT', 'SPX','AMZN']; // Add your stock symbols here
+  const symbols = ['AAPL', 'GOOGL', 'MSFT', 'NVDA','AMZN']; // Add your stock symbols here
 
   // Fetch opening prices once at connection
   for (const symbol of symbols) {
