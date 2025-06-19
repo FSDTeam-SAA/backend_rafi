@@ -69,6 +69,8 @@ const login = async (req, res) => {
       process.env.JWT_REFRESH_SECRET,
       process.env.JWT_REFRESH_EXPIRES_IN
     )
+    userFound.refreshToken = refreshToken
+    await userFound.save()
 
     return res.status(200).json(
       apiResponse(200, 'login successful', {

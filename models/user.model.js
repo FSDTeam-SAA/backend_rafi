@@ -49,6 +49,9 @@ const userSchema = mongoose.Schema(
       password_reset_token: {
         type: String,
         },
+        refreshToken:{
+          type:String
+        }
   },
   {
     timestamps: true,
