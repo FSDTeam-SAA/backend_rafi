@@ -288,12 +288,10 @@ const logout = async (req, res) => {
     { refreshToken: "" },
     { new: true }
   );
-  sendResponse(res, {
-    statusCode: httpStatus.OK,
-    success: true,
-    message: "Logged out successfully",
-    data: "",
-  });
+res.status(200).send({
+  success: true,
+  message: "Logged out successfully",
+})
 }
 
 
