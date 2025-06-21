@@ -1118,7 +1118,7 @@ exports.oliveStcoksProfolio = async(req,res)=>{
       };
     }));
 
-    res.json({ qualityStocks: results });
+    res.json({ OliveStcoks: results });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch quality stocks' });
