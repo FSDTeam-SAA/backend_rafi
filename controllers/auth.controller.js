@@ -5,6 +5,7 @@ const { createToken } = require('../utils/authToken')
 const jwt = require('jsonwebtoken')
 const { sendMail } = require('../config/mailer')
 const bcrypt = require('bcrypt')
+
 // register user
 const registration = async (req, res) => {
   try {
@@ -207,38 +208,113 @@ const forgotPassword = async (req, res) => {
   }
 }
 
-// reset password
-const resetPassword = async (req, res) => {
+// verify otp
+ const verifyOtp = async (req, res) => {
   try {
-    const { email,otp, password } = req.body
+    const { email, otp } = req.body
 
-    if (!email || !otp || !password) {
-      res
-        .statusA(404)
-        .json({ success: false, message: 'All field are required!' })
-      return
-    }
-        const user = await User.findOne({email: email})
-    if (!user) {
-      res.status(404).json({ success: false, message: 'User not found!' })
-    }
-    if (!user.password_reset_token) {
-      res.status(404).json({ success: false, message: 'Password reset token is invalid !' })
-    }
-    const verify = jwt.decode( user.password_reset_token, process.env.JWT_ACCESS_SECRET)
-    if (verify.otp !== otp) {
-      res.status(404).json({ success: false, message: 'Invalid OTP!' })
+    if (!email || !otp) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'Email and OTP are required!' })
     }
 
-    const hash = await bcrypt.hash(password, 10)
-    await User.findByIdAndUpdate(user._id, { password: hash, password_reset_token: null })
-    res.json({ success: true, message: 'Password reset successfully' })
-  } catch (error) {
-    res
-      .statusA(500)
-      .json({ success: false, message: 'Failed to reset password!' })
+    const user = await User.findOne({ email })
+    if (!user || !user.password_reset_token) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Invalid token or user not found' })
+    }
+
+    const decoded = jwt.decode(
+      user.password_reset_token,
+      process.env.JWT_ACCESS_SECRET
+    )
+    if (!decoded || decoded.otp !== otp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' })
+    }
+
+    return res.json({ success: true, message: 'OTP verified' })
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to verify OTP' })
   }
 }
+
+
+// reset password
+// const resetPassword = async (req, res) => {
+//   try {
+//     const { email,otp, password } = req.body
+
+//     if (!email || !otp || !password) {
+//       res
+//         .statusA(404)
+//         .json({ success: false, message: 'All field are required!' })
+//       return
+//     }
+//         const user = await User.findOne({email: email})
+//     if (!user) {
+//       res.status(404).json({ success: false, message: 'User not found!' })
+//     }
+//     if (!user.password_reset_token) {
+//       res.status(404).json({ success: false, message: 'Password reset token is invalid !' })
+//     }
+//     const verify = jwt.decode( user.password_reset_token, process.env.JWT_ACCESS_SECRET)
+//     if (verify.otp !== otp) {
+//       res.status(404).json({ success: false, message: 'Invalid OTP!' })
+//     }
+
+//     const hash = await bcrypt.hash(password, 10)
+//     await User.findByIdAndUpdate(user._id, { password: hash, password_reset_token: null })
+//     res.json({ success: true, message: 'Password reset successfully' })
+//   } catch (error) {
+//     res
+//       .statusA(500)
+//       .json({ success: false, message: 'Failed to reset password!' })
+//   }
+// }
+
+ const resetPassword = async (req, res) => {
+  try {
+    const { email, otp, password } = req.body
+
+    if (!email || !otp || !password) {
+      return res
+        .status(400)
+        .json({ success: false, message: 'All fields are required' })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user || !user.password_reset_token) {
+      return res
+        .status(404)
+        .json({ success: false, message: 'Invalid token or user not found' })
+    }
+
+    const decoded = jwt.decode(
+      user.password_reset_token,
+      process.env.JWT_ACCESS_SECRET
+    )
+    if (!decoded || decoded.otp !== otp) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' })
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10)
+    await User.findByIdAndUpdate(user._id, {
+      password: hashedPassword,
+      password_reset_token: null,
+    })
+
+    return res.json({ success: true, message: 'Password reset successfully' })
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ success: false, message: 'Failed to reset password' })
+  }
+}
+
 
 // change password
 const changePassword = async (req, res) => {
@@ -301,5 +377,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   changePassword,
-  logout
+  logout,
+  verifyOtp,
+  changePassword,
 }
