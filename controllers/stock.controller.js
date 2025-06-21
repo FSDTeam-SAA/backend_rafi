@@ -94,11 +94,47 @@ async function getStockDetails(symbol) {
   });
 }
 
-// Combined endpoint
 exports.stocksSummary = async (req, res) => {
   try {
-    const symbols = await getTrendingSymbols(5);
-    const stockDetails = await Promise.all(symbols.map(getStockDetails));
+    const symbols = await getTrendingSymbols(10);
+
+    const stockDetails = await Promise.all(
+      symbols.map(async (symbol) => {
+        const basicDetails = await getStockDetails(symbol);
+        const quotePrice = basicDetails.quote?.data?.c;
+        const olive = await Olive.findOne({ symbol }).exec();
+
+        // Determine quadrant
+        let quadrant = '';
+        if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+        else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
+        else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
+        else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
+
+        // Valuation analysis
+        let valuationColor = 'yellow';
+        if (olive?.fair_value && quotePrice) {
+          const valuationDiff = ((quotePrice - olive.fair_value) / olive.fair_value) * 100;
+          if (valuationDiff < -10) valuationColor = 'green';
+          else if (valuationDiff > 10) valuationColor = 'red';
+        }
+
+        // Olive visuals
+        const olives = {
+          financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+          competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+          valuation: quotePrice <= olive?.fair_value ? 'green' : 'gray',
+        };
+
+        return {
+          ...basicDetails,
+          symbol,
+          quadrant,
+          valuationColor,
+          olives,
+        };
+      })
+    );
 
     const topStocks = [...stockDetails]
       .filter((s) => s.upsidePercent !== null)
