@@ -21,7 +21,11 @@ const protfolioSchema = new mongoose.Schema(
               },
 
         }
-    ]
+    ],
+    cash: {
+      type: Number,
+      default: 0,
+    }
   },
   {
     timestamps: true,

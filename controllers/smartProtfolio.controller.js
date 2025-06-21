@@ -146,6 +146,7 @@ async function getQuotes(symbols) {
 
 const finnhub = require('finnhub');
 const moment = require('moment');
+const Olive = require('../models/stcoks.olive.model');
 
 const api_key = finnhub.ApiClient.instance.authentications['api_key'];
 api_key.apiKey = process.env.FINHUB_API_KEY;
@@ -190,8 +191,9 @@ const finnhubClient = new finnhub.DefaultApi();
 exports.getPortfolioOverview = async (req, res) => {
   try {
     const portfolio = req.body.holdings; // [{ symbol: "AAPL", shares: 10 }]
+    const {id} = req.body
     let totalValue = 0, dailyChange = 0;
-
+    const protfolio = Protfolio.findById(id)
 const detailed = await Promise.all(
   portfolio.map(async (holding) => {
     try {
@@ -207,6 +209,22 @@ const detailed = await Promise.all(
           err || !data || data.c === 0 ? reject(err || new Error('Invalid quote')) : resolve(data)
         )
       );
+              const olive = await Olive.findOne({ symbol: holding.symbol }).exec();
+
+        // Determine quadrant
+        let quadrant = '';
+        if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+        else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
+        else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
+        else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
+
+
+        // Olive visuals
+        const olives = {
+          financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+          competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+          valuation: quote.c <= olive?.fair_value ? 'green' : 'gray',
+        };
 
       const value = quote.c * holding.shares;
       const change = quote.d * holding.shares;
@@ -222,7 +240,8 @@ const detailed = await Promise.all(
         price: quote.c,
         change: quote.d,
         percent: quote.dp,
-        value: value.toFixed(2)
+        value: value.toFixed(2),
+        olives
       };
     } catch (err) {
       console.warn(`Skipping ${holding.symbol}:`, err.message);
@@ -237,7 +256,8 @@ const filteredDetailed = detailed.filter(Boolean);
       totalHoldings: totalValue.toFixed(2),
       dailyReturn: dailyChange.toFixed(2),
       dailyReturnPercent: ((dailyChange / totalValue) * 100).toFixed(2),
-      holdings: filteredDetailed
+      holdings: filteredDetailed,
+      cash: protfolio.cash
     });
   } catch (err) {
     res.status(500).json({ error: "Portfolio overview failed", detail: err.message });

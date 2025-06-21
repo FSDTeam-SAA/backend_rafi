@@ -1,6 +1,7 @@
 const axios = require("axios");
 const finnhub = require("finnhub");
 const Olive = require("../models/stcoks.olive.model");
+const qualityStocks = require("../models/qualityStcoks.model");
 
 // Configure Finnhub client
 const api_key = finnhub.ApiClient.instance.authentications["api_key"];
@@ -66,6 +67,7 @@ async function getStockDetails(symbol) {
             params: { symbol, token: process.env.FINHUB_API_KEY },
           }),
         ]);
+        // console.log(recRes.data, "adsjfhdsf", targetRes.data)
 
         const rec = recRes.data[0] || {};
         const target = targetRes.data || {};
@@ -208,7 +210,7 @@ exports.searchStocks = async (req, res) => {
               err ? reject(err) : resolve(data)
             )
           );
-                console.log( companyProfile );
+          console.log(companyProfile);
 
           const quote = await new Promise((resolve, reject) =>
             finnhubClient.quote(item.symbol, (err, data) =>
@@ -995,7 +997,7 @@ exports.getStockOfTheMonth = async (req, res) => {
 
 exports.getQualityStocks = async (req, res) => {
   try {
-    const docs = await Olive.find({ financial_health: 'good', compatitive_advantage: 'good' });
+    const docs = await qualityStocks.find({ type: 'quality' });
 
     const results = await Promise.all(docs.map(async stock => {
       const [rec, pt] = await Promise.all([
@@ -1004,6 +1006,32 @@ exports.getQualityStocks = async (req, res) => {
       ]);
       const latestRec = rec.data[0] || {};
       const latestPt = pt.data || {};
+              const basicDetails = await getStockDetails({symbol:stock.symbol});
+        const quotePrice = basicDetails.quote?.data?.c;
+      const olive = await Olive.findOne({ symbol: stock.symbol }).exec();
+
+      // Determine quadrant
+      let quadrant = '';
+      if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+      else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
+      else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
+      else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
+
+      // Valuation analysis
+      let valuationColor = 'yellow';
+      if (olive?.fair_value && quotePrice) {
+        const valuationDiff = ((quotePrice - olive.fair_value) / olive.fair_value) * 100;
+        if (valuationDiff < -10) valuationColor = 'green';
+        else if (valuationDiff > 10) valuationColor = 'red';
+      }
+      console.log()
+
+      // Olive visuals
+      const olives = {
+        financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+        competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+        valuation: quotePrice <= olive?.fair_value ? 'green' : 'gray',
+      };
 
       return {
         symbol: stock.symbol,
@@ -1017,7 +1045,10 @@ exports.getQualityStocks = async (req, res) => {
         oneMonthReturn: stock.oneMonthReturn || '0.00%', // if stored
         marketCap: stock.marketCap || '$0',
         lastRatingDate: stock.updatedAt || '-',
-        sector: stock.sector || 'N/A'
+        sector: stock.sector || 'N/A',
+        quadrant,
+        valuationColor,
+        olives,
       };
     }));
 
@@ -1027,6 +1058,72 @@ exports.getQualityStocks = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch quality stocks' });
   }
 };
+
+
+
+exports.oliveStcoksProfolio = async(req,res)=>{
+  try {
+    const docs = await qualityStocks.find({ type: 'protfolio' });
+
+    const results = await Promise.all(docs.map(async stock => {
+      const [rec, pt] = await Promise.all([
+        axios.get('https://finnhub.io/api/v1/stock/recommendation', { params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY } }),
+        axios.get('https://finnhub.io/api/v1/stock/price-target', { params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY } })
+      ]);
+      const latestRec = rec.data[0] || {};
+      const latestPt = pt.data || {};
+              const basicDetails = await getStockDetails({symbol:stock.symbol});
+        const quotePrice = basicDetails.quote?.data?.c;
+      const olive = await Olive.findOne({ symbol: stock.symbol }).exec();
+
+      // Determine quadrant
+      let quadrant = '';
+      if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+      else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
+      else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
+      else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
+
+      // Valuation analysis
+      let valuationColor = 'yellow';
+      if (olive?.fair_value && quotePrice) {
+        const valuationDiff = ((quotePrice - olive.fair_value) / olive.fair_value) * 100;
+        if (valuationDiff < -10) valuationColor = 'green';
+        else if (valuationDiff > 10) valuationColor = 'red';
+      }
+      console.log()
+
+      // Olive visuals
+      const olives = {
+        financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+        competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+        valuation: quotePrice <= olive?.fair_value ? 'green' : 'gray',
+      };
+
+      return {
+        symbol: stock.symbol,
+        stockRating: latestRec.rating || 'N/A',
+        analystTarget: `$${latestPt.targetMean?.toFixed(2) || '0.00'} (${latestPt.targetPercent?.toFixed(2) || '0.00'}%)`,
+        ratingTrend: {
+          buy: latestRec.buy || 0,
+          hold: latestRec.hold || 0,
+          sell: latestRec.sell || 0
+        },
+        oneMonthReturn: stock.oneMonthReturn || '0.00%', // if stored
+        marketCap: stock.marketCap || '$0',
+        lastRatingDate: stock.updatedAt || '-',
+        sector: stock.sector || 'N/A',
+        quadrant,
+        valuationColor,
+        olives,
+      };
+    }));
+
+    res.json({ qualityStocks: results });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to fetch quality stocks' });
+  }
+}
 
 
 

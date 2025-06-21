@@ -34,6 +34,7 @@ const subscriptionRouter = require("./routes/subscriptionPlan.route");
 const portfolioRoutes = require("./routes/protfolio.route");
 const financialStatementsRoutes = require("./routes/financialStatements.route");
 const oliveRoutes = require("./routes/olive.route");
+const qualityStcoks = require("./routes/qualityStocks.route");
 const { default: axios } = require("axios");
 
 
@@ -91,6 +92,7 @@ app.use('/api/v1', portfolioRoutes);
 app.use("/api/v1",oliveRoutes)
 
 app.use('/api/v1/user',userRouter)
+app.use('/api/v1/admin/stocks',qualityStcoks)
 
 
 
