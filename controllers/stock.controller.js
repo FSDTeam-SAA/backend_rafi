@@ -217,6 +217,7 @@ exports.searchStocks = async (req, res) => {
               err || !data || data.c === 0 ? reject(err || new Error('No quote')) : resolve(data)
             )
           );
+          const getStockdetailsData = await getStockDetails(item.symbol)
 
           return {
             logo: companyProfile.logo,
@@ -226,7 +227,8 @@ exports.searchStocks = async (req, res) => {
             flag: getCountryFlag(companyProfile.exchange),
             price: quote.c,
             change: quote.d,
-            percentChange: quote.dp
+            percentChange: quote.dp,
+            getStockdetailsData: getStockdetailsData
           };
         } catch (err) {
           console.warn(`Skipping ${item.symbol} due to error:`, err.message);
