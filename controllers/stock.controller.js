@@ -999,9 +999,10 @@ exports.getStockOfTheMonth = async (req, res) => {
 
 exports.getQualityStocks = async (req, res) => {
   try {
-    const docs = await qualityStocks.find({ type: 'quality' });
+    const docs = await qualityStocks.findOne({ type: 'quality' });
+    console.log(docs)
 
-    const results = await Promise.all(docs.map(async stock => {
+    const results = await Promise.all(docs.stocks.map(async stock => {
       const [rec, pt] = await Promise.all([
         axios.get('https://finnhub.io/api/v1/stock/recommendation', { params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY } }),
         axios.get('https://finnhub.io/api/v1/stock/price-target', { params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY } })
