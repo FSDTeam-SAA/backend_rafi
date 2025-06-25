@@ -1183,10 +1183,13 @@ exports.getPortfolioDashboard = async (req, res) => {
 
 const getStockMeta = async (symbol) => {
   try {
-    const [profile, quote, recommendation, olive] = await Promise.all([
+    const [profile, quote, recommendation, ptRes, olive] = await Promise.all([
       axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
       axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
       axios.get(`https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
+      axios.get('https://finnhub.io/api/v1/stock/price-target', {
+        params: { symbol: symbol, token: process.env.FINHUB_API_KEY },
+      }),
       Olive.findOne({ symbol: symbol }).exec()
     ]);
     const quadrant = olive
@@ -1204,6 +1207,7 @@ const getStockMeta = async (symbol) => {
       competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
       valuation: quote.c <= olive?.fair_value ? 'green' : 'gray',
     };
+    const priceTarget = ptRes.data || {};
 
     const data = {
       symbol,
