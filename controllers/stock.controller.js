@@ -1324,4 +1324,58 @@ exports.oliveStcoksProfolio = async(req,res)=>{
 }
 
 
+exports.getFinancialOverview = async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const token = process.env.FINHUB_API_KEY;
+
+    const { data } = await axios.get('https://finnhub.io/api/v1/stock/financials-reported', {
+      params: { symbol, token }
+    });
+
+    if (!data?.data?.length) {
+      return res.status(404).json({ error: 'No financial data found' });
+    }
+
+    const reports = data.data.slice(0, 5); // last 5 quarters or years
+
+    const structured = {
+      symbol,
+      dates: [],
+      incomeStatement: {},
+      balanceSheet: {},
+      cashFlow: {}
+    };
+    // console.log( reports[0].report)
+
+    for (const report of reports) {
+      const period = moment(report.filedDate).format('MMM YY');
+      structured.dates.push(period);
+
+      const sections = [
+        { type: 'incomeStatement', source: report.report?.ic || [] },
+        { type: 'balanceSheet', source: report.report?.bs || [] },
+        { type: 'cashFlow', source: report.report?.cf || [] }
+      ];
+
+      sections.forEach(({ type, source }) => {
+        for (const item of source) {
+          const label = item.label || item.concept;
+          if (!structured[type][label]) {
+            structured[type][label] = [];
+          }
+          structured[type][label].push(item.value);
+        }
+      });
+    }
+
+    res.json(structured);
+
+  } catch (err) {
+    console.error('Financial overview error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch financial overview' });
+  }
+};
+
+
 

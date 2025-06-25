@@ -1129,6 +1129,25 @@ exports.getPortfolioDashboard = async (req, res) => {
     };
 
     const returnsComparison = await generateMonthlyComparison();
+        const performanceChart = {
+      labels: returnsComparison.map((item) => item.month),
+      datasets: [
+        {
+          label: 'My Portfolio',
+          data: returnsComparison.map((item) => item.portfolio),
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          tension: 0.3,
+        },
+        {
+          label: 'S&P 500',
+          data: returnsComparison.map((item) => item.sp500),
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          tension: 0.3,
+        }
+      ]
+    };
 
     res.json({
       overview: {
@@ -1152,7 +1171,8 @@ exports.getPortfolioDashboard = async (req, res) => {
         ytd: totalReturn,
         total: totalReturn,
       },
-      transactionHistory
+      transactionHistory,
+      performanceChart
     });
   } catch (err) {
     console.error('Portfolio dashboard error:', err.message);

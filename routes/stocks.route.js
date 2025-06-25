@@ -1,7 +1,7 @@
 const express = require('express');
 const { protect, isAdmin } = require('../middlewares/auth.middleware');
 const upload = require('../middlewares/multer.middleware');
-const { stocksSummary, searchStocks, getStockOverview, getDailyGainersLosers, getStockTargetPrice, getStockCashFlow, getStockEPS, getStockEarningsSurprise, getOliveStockOverview, getRevenueBreakdown, getQualityStocks, getStockOfTheMonth, oliveStcoksProfolio } = require('../controllers/stock.controller');
+const { stocksSummary, searchStocks, getStockOverview, getDailyGainersLosers, getStockTargetPrice, getStockCashFlow, getStockEPS, getStockEarningsSurprise, getOliveStockOverview, getRevenueBreakdown, getQualityStocks, getStockOfTheMonth, oliveStcoksProfolio, getFinancialOverview } = require('../controllers/stock.controller');
 
 const router = express.Router();
 
@@ -21,5 +21,7 @@ router.get('/stock/earnings-surprise', getStockEarningsSurprise);
 router.get('/quality-stocks', getQualityStocks);
 router.get('/stock-of-month', getStockOfTheMonth);
 router.get('/olive-stock-protfolio', oliveStcoksProfolio);
+
+router.get('/financial-overview/:symbol', getFinancialOverview);
 
 module.exports = router;
