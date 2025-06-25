@@ -21,6 +21,10 @@ const protfolioSchema = new mongoose.Schema(
               },
             price: {
               type: Number,
+            },
+            date: {
+              type: Date,
+              default: Date.now(),
             }
 
         }

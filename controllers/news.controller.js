@@ -343,7 +343,7 @@ exports.getMultipleCompanyNews = async (req, res) => {
     const { protfolioId } = req.body; // e.g., ["AAPL", "GOOGL"]
     
     const portfolio = await Protfolio.findById(protfolioId);
-    console.log(portfolio)
+    // console.log(portfolio)
     
     if (!Array.isArray(portfolio.stocks) || portfolio.stocks === 0) {
       return res.status(400).json({ error: 'symbols array is required in body' });

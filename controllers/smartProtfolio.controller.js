@@ -149,6 +149,7 @@ const moment = require('moment');
 const Olive = require('../models/stcoks.olive.model');
 const protfolio = require('../models/protfolio.model');
 const qualityStocks = require('../models/qualityStcoks.model');
+const WatchList = require('../models/watchList.model');
 
 const api_key = finnhub.ApiClient.instance.authentications['api_key'];
 api_key.apiKey = process.env.FINHUB_API_KEY;
@@ -323,6 +324,7 @@ exports.getPortfolioOverview = async (req, res) => {
 
           const currentValue = quote.c * holding.quantity;
           const currentChange = quote.d * holding.quantity;
+          const gainLossPercent = ((quote.c - holding.price) / holding.price) * 100;
 
           totalValue += currentValue;
           dailyChange += currentChange;
@@ -341,6 +343,7 @@ exports.getPortfolioOverview = async (req, res) => {
             symbol: holding.symbol,
             shares: holding.quantity,
             holdingPrice: holding.price,
+            holdingGain: gainLossPercent,
             price: quote.c,
             change: quote.d,
             percent: quote.dp,
@@ -850,4 +853,92 @@ exports.getPortfolioDashboard = async (req, res) => {
     console.error('Portfolio dashboard error:', err.message);
     res.status(500).json({ error: 'Failed to generate portfolio dashboard' });
   }
+};
+
+
+const getStockMeta = async (symbol) => {
+  try {
+    const [profile, quote, recommendation] = await Promise.all([
+      axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
+      axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
+      axios.get(`https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
+    ]);
+
+    const data = {
+      symbol,
+      name: profile.data.name,
+      logo: profile.data.logo,
+      sector: profile.data.finnhubIndustry,
+      marketCap: profile.data.marketCapitalization,
+      change: quote.data.dp, // percent change
+      currentPrice: quote.data.c,
+      consensus: recommendation.data?.[0]?.consensus || 'N/A',
+    };
+    return data;
+  } catch (err) {
+    console.error(`Error fetching data for ${symbol}:`, err.message);
+    return null;
+  }
+};
+
+// Add to watchlist
+exports.addToWatchList = async (req, res) => {
+  const user = req.user._id;
+  const { symbol } = req.body;
+
+  if (!symbol) {
+    return res.status(400).json({ error: 'Symbol is required' });
+  }
+
+  let watchlist = await WatchList.findOne({ user });
+
+  if (!watchlist) {
+    watchlist = await WatchList.create({ user, stocks: [{ symbol }] });
+  } else {
+    const alreadyAdded = watchlist.stocks.find((stock) => stock.symbol === symbol);
+    if (alreadyAdded) {
+      return res.status(400).json({ error: 'Stock already in watchlist' });
+    }
+    watchlist.stocks.push({ symbol });
+    await watchlist.save();
+  }
+
+  res.status(200).json({ success: true, message: 'Added to watchlist' });
+};
+
+// Remove from watchlist
+exports.removeFromWatchList = async (req, res) => {
+  const user = req.user._id;
+  const { symbol } = req.body;
+
+  if (!symbol) {
+    return res.status(400).json({ error: 'Symbol is required' });
+  }
+
+  const watchlist = await WatchList.findOne({ user });
+  if (!watchlist) {
+    return res.status(404).json({ error: 'Watchlist not found' });
+  }
+
+  watchlist.stocks = watchlist.stocks.filter((s) => s.symbol !== symbol);
+  await watchlist.save();
+
+  res.status(200).json({ success: true, message: 'Removed from watchlist' });
+};
+
+// Fetch watchlist with live data
+exports.getWatchList = async (req, res) => {
+  const user = req.user._id;
+
+  const watchlist = await WatchList.findOne({ user });
+  if (!watchlist || watchlist.stocks.length === 0) {
+    return res.status(200).json({ success: true, data: [] });
+  }
+
+  const enriched = await Promise.all(
+    watchlist.stocks.map((s) => getStockMeta(s.symbol))
+  );
+
+  const filtered = enriched.filter(Boolean); // Remove failed lookups
+  res.status(200).json({ success: true, data: filtered });
 };

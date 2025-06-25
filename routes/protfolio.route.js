@@ -1,5 +1,5 @@
 const express = require('express');
-const { getPortfolioOverview, getEarningsCalendar, getPerformanceBreakdown, getDividends, getAssetAllocation, getStockMetrics, getStockChart, getTopMovers, createProtfolio, addStockProtfolio, getProtfolio, deleteStockFromPortfolio, getProtfolioById, getCalendarEvents, getPortfolioDashboard, updateProtfolio } = require('../controllers/smartProtfolio.controller');
+const { getPortfolioOverview, getEarningsCalendar, getPerformanceBreakdown, getDividends, getAssetAllocation, getStockMetrics, getStockChart, getTopMovers, createProtfolio, addStockProtfolio, getProtfolio, deleteStockFromPortfolio, getProtfolioById, getCalendarEvents, getPortfolioDashboard, updateProtfolio, addToWatchList, removeFromWatchList, getWatchList } = require('../controllers/smartProtfolio.controller');
 const { protect } = require('../middlewares/auth.middleware');
 const router = express.Router();
 
@@ -39,5 +39,11 @@ router.patch('/protfolio/:id',protect,updateProtfolio)
 
 router.post('/protfolio/add-stock',protect,addStockProtfolio)
 router.post('/protfolio/delete-stock',protect,deleteStockFromPortfolio)
+
+
+
+router.post('/protfolio/watchlist/add', protect, addToWatchList);
+router.post('/protfolio/watchlist/remove', protect, removeFromWatchList);
+router.get('/protfolio/watchlist/', protect, getWatchList);
 
 module.exports = router;
