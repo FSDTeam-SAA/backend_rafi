@@ -1067,7 +1067,7 @@ exports.getPortfolioDashboard = async (req, res) => {
             if (!c || c.length < 2) continue;
             portfolioStartValue += c[0] * stock.quantity;
             portfolioEndValue += c[c.length - 1] * stock.quantity;
-          } catch {}
+          } catch { }
         }
 
         const quality = await qualityStocks.find({ type: 'protfolio' });
@@ -1087,7 +1087,7 @@ exports.getPortfolioDashboard = async (req, res) => {
             mudarabahStart += c[0];
             mudarabahEnd += c[c.length - 1];
             mudarabahCount++;
-          } catch {}
+          } catch { }
         }
 
         let spStart = 0, spEnd = 0;
@@ -1106,7 +1106,7 @@ exports.getPortfolioDashboard = async (req, res) => {
             spStart = spClose[0];
             spEnd = spClose[spClose.length - 1];
           }
-        } catch {}
+        } catch { }
 
         const monthlyReturn = portfolioStartValue > 0
           ? ((portfolioEndValue - portfolioStartValue) / portfolioStartValue) * 100
@@ -1129,7 +1129,7 @@ exports.getPortfolioDashboard = async (req, res) => {
     };
 
     const returnsComparison = await generateMonthlyComparison();
-        const performanceChart = {
+    const performanceChart = {
       labels: returnsComparison.map((item) => item.month),
       datasets: [
         {
@@ -1213,8 +1213,13 @@ const getStockMeta = async (symbol) => {
       marketCap: profile.data.marketCapitalization,
       change: quote.data.dp, // percent change
       currentPrice: quote.data.c,
-      consensus: recommendation.data?.[0]?.consensus || 'N/A',
-      olives
+      analystTarget: `$${priceTarget.targetMean?.toFixed(2) || '0.00'} (${priceTarget.targetPercent?.toFixed(2) || '0.00'}%)`,
+      olives,
+      ratingTrend: {
+        buy: recommendation.buy || 0,
+        hold: recommendation.hold || 0,
+        sell: recommendation.sell || 0,
+      },
     };
     return data;
   } catch (err) {
