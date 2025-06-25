@@ -310,10 +310,10 @@ exports.getPortfolioOverview = async (req, res) => {
             ? olive.financial_health === "good" && olive.compatitive_advantage === "good"
               ? 'Olive Green'
               : olive.financial_health === "good"
-              ? 'Lime Green'
-              : olive.compatitive_advantage === "good"
-              ? 'Orange'
-              : 'Yellow'
+                ? 'Lime Green'
+                : olive.compatitive_advantage === "good"
+                  ? 'Orange'
+                  : 'Yellow'
             : 'Unknown';
 
           const olives = {
@@ -449,7 +449,7 @@ exports.getDividends = async (req, res) => {
 
   const from = moment().subtract(8, 'years').format('YYYY-MM-DD');
   const to = moment().format('YYYY-MM-DD');
-  console.log( from, to );
+  console.log(from, to);
 
   try {
     // Fetch dividend history
@@ -506,7 +506,7 @@ exports.getDividends = async (req, res) => {
       };
     });
 
-        // Chart data (yearly yield)
+    // Chart data (yearly yield)
     const chartforYeild = years.map(year => {
       const total = grouped[year];
       return {
@@ -555,7 +555,7 @@ exports.getAssetAllocation = async (req, res) => {
     );
     res.json({ allocation });
   } catch (error) {
-    console.log( error);
+    console.log(error);
     res.status(500).json({ error: 'Error fetching asset allocation' });
   }
 };
@@ -592,53 +592,98 @@ exports.getStockChart = async (req, res) => {
   }
 };
 
-exports.createProtfolio = async (req, res) =>{
-  const {name} = req.body;
-  const _portfolio = await Protfolio.create({name, user: req.user._id});
+exports.createProtfolio = async (req, res) => {
+  const { name } = req.body;
+  const _portfolio = await Protfolio.create({ name, user: req.user._id });
   res.status(201).send({
     message: 'Portfolio created successfully',
     portfolio: _portfolio
   });
 }
 
-exports.updateProtfolio = async (req, res) =>{
-  const {name, cash} = req.body;
+exports.updateProtfolio = async (req, res) => {
+  const { name, cash } = req.body;
   const portfolioId = req.params.id;
-  const _portfolio = await Protfolio.findByIdAndUpdate(portfolioId, {name, cash}, {new: true});
+  const _portfolio = await Protfolio.findByIdAndUpdate(portfolioId, { name, cash }, { new: true });
   res.status(201).send({
     message: 'Portfolio update successfully',
     portfolio: _portfolio
   });
 }
 
-exports.getProtfolio = async (req, res) =>{
-  const protofolio = await Protfolio.find({user: req.user._id})
-  return res.status( 200).json(protofolio);
+exports.getProtfolio = async (req, res) => {
+  const protofolio = await Protfolio.find({ user: req.user._id })
+  return res.status(200).json(protofolio);
 }
 
-exports.getProtfolioById = async (req, res) =>{
+exports.getProtfolioById = async (req, res) => {
   const id = req.params.id;
-  const protofolio = await Protfolio.findOne({_id: id,user: req.user._id})
-  return res.status( 200).json(protofolio);
+  const protofolio = await Protfolio.findOne({ _id: id, user: req.user._id })
+  return res.status(200).json(protofolio);
 }
+
+// exports.addStockProtfolio = async (req, res) => {
+//   const { portfolioId, symbol, quantity,price } = req.body;
+
+//   const portfolio = await Protfolio.findById(portfolioId);
+//   if (!portfolio) {
+//     return res.status(404).send({ message: 'Portfolio not found' });
+//   }
+
+//   const stockIndex = portfolio.stocks.findIndex(stock => stock.symbol === symbol);
+
+//   if (stockIndex !== -1) {
+//     // Stock exists, update quantity
+//     portfolio.stocks[stockIndex].quantity = quantity;
+//     if(price) portfolio.stocks[stockIndex].price = price;
+//   } else {
+//     // Stock doesn't exist, add new entry
+//     portfolio.stocks.push({ symbol, quantity,price });
+//   }
+
+//   await portfolio.save();
+
+//   res.status(201).send({
+//     message: stockIndex !== -1 ? 'Stock quantity updated' : 'Stock added to portfolio',
+//     portfolio,
+//   });
+// };
 
 exports.addStockProtfolio = async (req, res) => {
-  const { portfolioId, symbol, quantity,price } = req.body;
+  const { portfolioId, symbol, quantity, price, symbols } = req.body;
 
   const portfolio = await Protfolio.findById(portfolioId);
   if (!portfolio) {
     return res.status(404).send({ message: 'Portfolio not found' });
   }
 
-  const stockIndex = portfolio.stocks.findIndex(stock => stock.symbol === symbol);
+  if (symbols && Array.isArray(symbols) && symbols.length > 0) {
+    // Batch add mode
+    symbols.forEach((sym) => {
+      const exists = portfolio.stocks.find((s) => s.symbol === sym.symbol);
+      if (!exists) {
+        portfolio.stocks.push({ symbol: sym.symbol, quantity: 1, price: sym.price });
+      }
+    });
+
+    await portfolio.save();
+    return res.status(201).send({
+      message: 'Symbols added to portfolio',
+      portfolio,
+    });
+  }
+
+  if (!symbol) {
+    return res.status(400).send({ message: 'Symbol is required for single stock add/update' });
+  }
+
+  const stockIndex = portfolio.stocks.findIndex((stock) => stock.symbol === symbol);
 
   if (stockIndex !== -1) {
-    // Stock exists, update quantity
     portfolio.stocks[stockIndex].quantity = quantity;
-    if(price) portfolio.stocks[stockIndex].price = price;
+    if (price !== undefined) portfolio.stocks[stockIndex].price = price;
   } else {
-    // Stock doesn't exist, add new entry
-    portfolio.stocks.push({ symbol, quantity,price });
+    portfolio.stocks.push({ symbol, quantity, price });
   }
 
   await portfolio.save();
@@ -648,6 +693,8 @@ exports.addStockProtfolio = async (req, res) => {
     portfolio,
   });
 };
+
+
 
 exports.deleteStockFromPortfolio = async (req, res) => {
   const { portfolioId, symbol } = req.body;
@@ -689,7 +736,7 @@ exports.getCalendarEvents = async (req, res) => {
     const dividends = dividendsRes.data.dividends || [];
 
     const formatEvent = (e, type) => ({
-      
+
       symbol: e.symbol,
       type,
       date: e.date || e.exDate
@@ -722,7 +769,7 @@ async function getSNP500Return(period = '1M') {
         resolution: 'D',
         from: moment(from).unix(),
         to: moment(to).unix(),
-        token:  process.env.FINHUB_API_KEY,
+        token: process.env.FINHUB_API_KEY,
       },
     });
 
@@ -736,6 +783,164 @@ async function getSNP500Return(period = '1M') {
     return 0;
   }
 }
+
+// exports.getPortfolioDashboard = async (req, res) => {
+//   try {
+//     const { portfolioId } = req.params;
+//     const portfolio = await protfolio.findById(portfolioId).lean();
+//     if (!portfolio) return res.status(404).json({ error: 'Portfolio not found' });
+
+//     let totalInvested = 0;
+//     let currentValue = 0;
+//     const today = moment();
+//     const creationDate = moment(portfolio.createdAt);
+//     const monthsSinceCreated = today.diff(creationDate, 'months');
+
+//     let mostProfitable = null;
+//     let bestReturn = -Infinity;
+
+//     const holdingResults = await Promise.all(
+//       portfolio.stocks.map(async (item) => {
+//         try {
+//           const quote = await axios.get('https://finnhub.io/api/v1/quote', {
+//             params: { symbol: item.symbol, token: process.env.FINHUB_API_KEY },
+//           });
+
+//           const olive = await Olive.findOne({ symbol: item.symbol });
+
+//           const holdingCost = quote.data.c * item.quantity;
+//           const holdingValue = quote.data.c * item.quantity;
+//           const returnPct = ((holdingValue - holdingCost) / holdingCost) * 100;
+
+//           totalInvested += holdingCost;
+//           currentValue += holdingValue;
+
+//           if (returnPct > bestReturn) {
+//             mostProfitable = {
+//               symbol: item.symbol,
+//               openDate: portfolio.createdAt,
+//               gain: returnPct.toFixed(2),
+//             };
+//             bestReturn = returnPct;
+//           }
+
+//           return {
+//             symbol: item.symbol,
+//             current: holdingValue,
+//             cost: holdingCost,
+//             returnPct,
+//           };
+//         } catch {
+//           return null;
+//         }
+//       })
+//     );
+
+//     const filteredHoldings = holdingResults.filter(Boolean);
+//     const totalReturn = (((currentValue - totalInvested) / totalInvested) * 100).toFixed(2);
+//     const YTD = moment().startOf('year');
+
+//     const oneMonthReturn = filteredHoldings.map(h => h.returnPct).reduce((acc, r) => acc + r, 0) / filteredHoldings.length;
+
+//     const quality = await qualityStocks.find({ type: 'protfolio' });
+//     const qualityReturns = await Promise.all(
+//       quality.flatMap((q) => q.stocks).map(async (s) => {
+//         try {
+//           const quote = await axios.get('https://finnhub.io/api/v1/quote', {
+//             params: { symbol: s.symbol, token: process.env.FINHUB_API_KEY },
+//           });
+//           const olive = await Olive.findOne({ symbol: s.symbol });
+//           if (!olive || !olive.fair_value) return null;
+//           return ((quote.data.c - olive.fair_value) / olive.fair_value) * 100;
+//         } catch {
+//           return null;
+//         }
+//       })
+//     );
+
+//     const averageMudarabah = (qualityReturns.filter(Boolean).reduce((a, b) => a + b, 0) / qualityReturns.length).toFixed(2);
+//     const sp500Return = await getSNP500Return();
+
+//      let stockValue = 0;
+
+//   portfolio.stocks.forEach(stock => {
+//     const quantity = stock.quantity || 0;
+//     const price = stock.price || 0;
+//     stockValue += quantity * price;
+//   });
+
+//   const totalValue = stockValue + (portfolio.cash || 0);
+
+//     const transactionHistory = await Promise.all(
+//       portfolio.stocks.map(async (s) => {
+//         const profileRes = await axios.get(
+//           `https://finnhub.io/api/v1/stock/profile2?symbol=${s.symbol}&token=${process.env.FINHUB_API_KEY}`
+//         );
+
+//         const profile = profileRes.data;
+
+//         const currentQuote = await axios.get(
+//           `https://finnhub.io/api/v1/quote?symbol=${s.symbol}&token=${process.env.FINHUB_API_KEY}`
+//         );
+
+//         const currentPrice = currentQuote.data.c || 0;
+//         const stockValue = s.price * s.quantity;
+
+//         const portfolioPercentage = totalValue > 0
+//           ? ((stockValue / totalValue) * 100).toFixed(2)
+//           : '0.00';
+
+//         return {
+//           symbol: s.symbol,
+//           companyName: profile.name,
+//           logo: profile.logo,
+//           sector: profile.finnhubIndustry,
+//           currentPrice,
+//           quantity: s.quantity,
+//           holdingValue: stockValue.toFixed(2),
+//           portfolioPercentage: `${portfolioPercentage}%`,
+//           transactions: 1,
+//           lastTransaction: 'Open',
+//           date: moment(s.addedAt || portfolio.createdAt).format('ll'),
+//         };
+//       })
+//     );
+
+//     res.json({
+//       overview: {
+//         totalReturn: Number(totalReturn).toFixed(2),
+//         totalReturnColor: totalReturn >= 0 ? 'green' : 'red',
+//         oneMonthReturn: Number(oneMonthReturn).toFixed(2),
+//         activeSince: creationDate.format('ll'),
+//         riskProfile: 'Medium',
+//         YTDReturn: totalReturn, // Simplified
+//       },
+//       rankings: {
+//         successRate: '0%',
+//         averageReturn: Number(totalReturn).toFixed(2),
+//       },
+//       mostProfitableTrade: mostProfitable,
+//       returnsComparison: {
+//         portfolio: totalReturn,
+//         mudarabahAverage: averageMudarabah,
+//         sp500: sp500Return,
+//         months: monthsSinceCreated,
+//       },
+//       recentActivity: {
+//         oneMonth: oneMonthReturn,
+//         sixMonth: totalReturn,
+//         twelveMonth: totalReturn,
+//         ytd: totalReturn,
+//         total: totalReturn,
+//       },
+//       transactionHistory: transactionHistory
+//     });
+//   } catch (err) {
+//     console.error('Portfolio dashboard error:', err.message);
+//     res.status(500).json({ error: 'Failed to generate portfolio dashboard' });
+//   }
+// };
+
 
 exports.getPortfolioDashboard = async (req, res) => {
   try {
@@ -756,12 +961,10 @@ exports.getPortfolioDashboard = async (req, res) => {
       portfolio.stocks.map(async (item) => {
         try {
           const quote = await axios.get('https://finnhub.io/api/v1/quote', {
-            params: { symbol: item.symbol, token:  process.env.FINHUB_API_KEY },
+            params: { symbol: item.symbol, token: process.env.FINHUB_API_KEY },
           });
 
-          const olive = await Olive.findOne({ symbol: item.symbol });
-
-          const holdingCost = quote.data.c * item.quantity;
+          const holdingCost = item.price * item.quantity;
           const holdingValue = quote.data.c * item.quantity;
           const returnPct = ((holdingValue - holdingCost) / holdingCost) * 100;
 
@@ -791,28 +994,141 @@ exports.getPortfolioDashboard = async (req, res) => {
 
     const filteredHoldings = holdingResults.filter(Boolean);
     const totalReturn = (((currentValue - totalInvested) / totalInvested) * 100).toFixed(2);
-    const YTD = moment().startOf('year');
 
-    const oneMonthReturn = filteredHoldings.map(h => h.returnPct).reduce((acc, r) => acc + r, 0) / filteredHoldings.length;
+    const oneMonthReturn = filteredHoldings.length > 0
+      ? (filteredHoldings.reduce((acc, h) => acc + h.returnPct, 0) / filteredHoldings.length).toFixed(2)
+      : '0.00';
 
-    const quality = await qualityStocks.find({ type: 'protfolio' });
-    const qualityReturns = await Promise.all(
-      quality.flatMap((q) => q.stocks).map(async (s) => {
-        try {
-          const quote = await axios.get('https://finnhub.io/api/v1/quote', {
-            params: { symbol: s.symbol, token:  process.env.FINHUB_API_KEY },
-          });
-          const olive = await Olive.findOne({ symbol: s.symbol });
-          if (!olive || !olive.fair_value) return null;
-          return ((quote.data.c - olive.fair_value) / olive.fair_value) * 100;
-        } catch {
-          return null;
-        }
+    let stockValue = 0;
+    portfolio.stocks.forEach(stock => {
+      stockValue += (stock.quantity || 0) * (stock.price || 0);
+    });
+    const totalValue = stockValue + (portfolio.cash || 0);
+
+    const transactionHistory = await Promise.all(
+      portfolio.stocks.map(async (s) => {
+        const profileRes = await axios.get(
+          `https://finnhub.io/api/v1/stock/profile2?symbol=${s.symbol}&token=${process.env.FINHUB_API_KEY}`
+        );
+
+        const profile = profileRes.data;
+
+        const currentQuote = await axios.get(
+          `https://finnhub.io/api/v1/quote?symbol=${s.symbol}&token=${process.env.FINHUB_API_KEY}`
+        );
+
+        const currentPrice = currentQuote.data.c || 0;
+        const stockVal = s.price * s.quantity;
+        const portfolioPercentage = totalValue > 0 ? ((stockVal / totalValue) * 100).toFixed(2) : '0.00';
+
+        return {
+          symbol: s.symbol,
+          companyName: profile.name,
+          logo: profile.logo,
+          sector: profile.finnhubIndustry,
+          currentPrice,
+          quantity: s.quantity,
+          holdingValue: stockVal.toFixed(2),
+          portfolioPercentage: `${portfolioPercentage}%`,
+          transactions: 1,
+          lastTransaction: 'Open',
+          date: moment(s.addedAt || portfolio.createdAt).format('ll'),
+        };
       })
     );
 
-    const averageMudarabah = (qualityReturns.filter(Boolean).reduce((a, b) => a + b, 0) / qualityReturns.length).toFixed(2);
-    const sp500Return = await getSNP500Return();
+    const generateMonthlyComparison = async () => {
+      const months = [];
+      const now = moment().startOf('month');
+
+      for (let i = 5; i >= 0; i--) {
+        const monthStart = now.clone().subtract(i, 'months').startOf('month').unix();
+        const monthEnd = now.clone().subtract(i, 'months').endOf('month').unix();
+        const label = now.clone().subtract(i, 'months').format('MMM YYYY');
+
+        let portfolioStartValue = 0;
+        let portfolioEndValue = 0;
+        let mudarabahStart = 0;
+        let mudarabahEnd = 0;
+        let mudarabahCount = 0;
+
+        for (const stock of portfolio.stocks) {
+          try {
+            const candle = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+              params: {
+                symbol: stock.symbol,
+                resolution: 'D',
+                from: monthStart,
+                to: monthEnd,
+                token: process.env.FINHUB_API_KEY,
+              },
+            });
+            const c = candle.data.c;
+            if (!c || c.length < 2) continue;
+            portfolioStartValue += c[0] * stock.quantity;
+            portfolioEndValue += c[c.length - 1] * stock.quantity;
+          } catch {}
+        }
+
+        const quality = await qualityStocks.find({ type: 'protfolio' });
+        for (const s of quality.flatMap(q => q.stocks)) {
+          try {
+            const candle = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+              params: {
+                symbol: s.symbol,
+                resolution: 'D',
+                from: monthStart,
+                to: monthEnd,
+                token: process.env.FINHUB_API_KEY,
+              },
+            });
+            const c = candle.data.c;
+            if (!c || c.length < 2) continue;
+            mudarabahStart += c[0];
+            mudarabahEnd += c[c.length - 1];
+            mudarabahCount++;
+          } catch {}
+        }
+
+        let spStart = 0, spEnd = 0;
+        try {
+          const spCandle = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+            params: {
+              symbol: '^GSPC',
+              resolution: 'D',
+              from: monthStart,
+              to: monthEnd,
+              token: process.env.FINHUB_API_KEY,
+            },
+          });
+          const spClose = spCandle.data.c;
+          if (spClose && spClose.length >= 2) {
+            spStart = spClose[0];
+            spEnd = spClose[spClose.length - 1];
+          }
+        } catch {}
+
+        const monthlyReturn = portfolioStartValue > 0
+          ? ((portfolioEndValue - portfolioStartValue) / portfolioStartValue) * 100
+          : 0;
+        const mudarabahReturn = mudarabahStart > 0
+          ? ((mudarabahEnd - mudarabahStart) / mudarabahStart) * 100
+          : 0;
+        const sp500Return = spStart > 0
+          ? ((spEnd - spStart) / spStart) * 100
+          : 0;
+
+        months.push({
+          month: label,
+          portfolio: Number(monthlyReturn.toFixed(2)),
+          mudarabahAverage: Number(mudarabahReturn.toFixed(2)),
+          sp500: Number(sp500Return.toFixed(2)),
+        });
+      }
+      return months;
+    };
+
+    const returnsComparison = await generateMonthlyComparison();
 
     res.json({
       overview: {
@@ -821,19 +1137,14 @@ exports.getPortfolioDashboard = async (req, res) => {
         oneMonthReturn: Number(oneMonthReturn).toFixed(2),
         activeSince: creationDate.format('ll'),
         riskProfile: 'Medium',
-        YTDReturn: totalReturn, // Simplified
+        YTDReturn: totalReturn,
       },
       rankings: {
         successRate: '0%',
         averageReturn: Number(totalReturn).toFixed(2),
       },
       mostProfitableTrade: mostProfitable,
-      returnsComparison: {
-        portfolio: totalReturn,
-        mudarabahAverage: averageMudarabah,
-        sp500: sp500Return,
-        months: monthsSinceCreated,
-      },
+      returnsComparison,
       recentActivity: {
         oneMonth: oneMonthReturn,
         sixMonth: totalReturn,
@@ -841,13 +1152,7 @@ exports.getPortfolioDashboard = async (req, res) => {
         ytd: totalReturn,
         total: totalReturn,
       },
-      transactionHistory: portfolio.stocks.map(s => ({
-        companyName: s.symbol,
-        return: oneMonthReturn,
-        transactions: 1,
-        lastTransaction: 'Open',
-        date: moment(creationDate).format('ll')
-      }))
+      transactionHistory
     });
   } catch (err) {
     console.error('Portfolio dashboard error:', err.message);
@@ -858,11 +1163,27 @@ exports.getPortfolioDashboard = async (req, res) => {
 
 const getStockMeta = async (symbol) => {
   try {
-    const [profile, quote, recommendation] = await Promise.all([
+    const [profile, quote, recommendation, olive] = await Promise.all([
       axios.get(`https://finnhub.io/api/v1/stock/profile2?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
       axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
       axios.get(`https://finnhub.io/api/v1/stock/recommendation?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
+      Olive.findOne({ symbol: symbol }).exec()
     ]);
+    const quadrant = olive
+      ? olive.financial_health === "good" && olive.compatitive_advantage === "good"
+        ? 'Olive Green'
+        : olive.financial_health === "good"
+          ? 'Lime Green'
+          : olive.compatitive_advantage === "good"
+            ? 'Orange'
+            : 'Yellow'
+      : 'Unknown';
+
+    const olives = {
+      financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+      competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+      valuation: quote.c <= olive?.fair_value ? 'green' : 'gray',
+    };
 
     const data = {
       symbol,
@@ -873,6 +1194,7 @@ const getStockMeta = async (symbol) => {
       change: quote.data.dp, // percent change
       currentPrice: quote.data.c,
       consensus: recommendation.data?.[0]?.consensus || 'N/A',
+      olives
     };
     return data;
   } catch (err) {
