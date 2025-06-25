@@ -1379,3 +1379,95 @@ exports.getFinancialOverview = async (req, res) => {
 
 
 
+exports.getOwnershipOverview = async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    if (!symbol) return res.status(400).json({ error: 'Symbol is required' });
+
+    const breakdown = {
+      insiders: 0,
+      mutualFunds: 0,
+      otherInstitutions: 0,
+      publicRetail: 100,
+    };
+
+    const topShareHolders = [];
+    const topMutualFundHolders = [];
+    const topETFHolders = [];
+
+    // === Institutional Ownership (primary)
+    const { data: instOwnership } = await axios.get(`https://finnhub.io/api/v1/institutional/ownership`, {
+      params: { symbol, token: FINNHUB_API_KEY },
+    });
+    // console.log( instOwnership.data[0] );
+
+    if (Array.isArray(instOwnership.data)) {
+      instOwnership.data.forEach((entry) => {
+        // console.log(entry)
+        const name = entry.name?.toLowerCase() || '';
+        const percent = entry.percent || 0;
+        const record = {
+          holder: entry.name,
+          shares: entry.shares || 0,
+          percent: `${percent.toFixed(2)}%`,
+          value: `$${Number(entry.marketValue || 0).toLocaleString()}`,
+        };
+
+        if (name.includes('etf')) {
+          breakdown.otherInstitutions += percent;
+          topETFHolders.push({ ...record, type: 'ETF' });
+        } else if (name.includes('fund') || name.includes('vanguard') || name.includes('fidelity')) {
+          breakdown.mutualFunds += percent;
+          topMutualFundHolders.push({ ...record, type: 'Mutual Fund' });
+        } else {
+          breakdown.otherInstitutions += percent;
+          topShareHolders.push({ ...record, type: 'Institutional' });
+        }
+      });
+    }
+
+    breakdown.publicRetail = Math.max(0, 100 - (breakdown.insiders + breakdown.mutualFunds + breakdown.otherInstitutions));
+
+    // === Insider Trades
+    const from = moment().subtract(12, 'months').format('YYYY-MM-DD');
+    const to = moment().format('YYYY-MM-DD');
+    const { data: insiderData } = await axios.get(`https://finnhub.io/api/v1/stock/insider-transactions`, {
+      params: { symbol, from, to, token: FINNHUB_API_KEY },
+    });
+    // console.log( insiderData );
+
+    const insiderTrades = (insiderData.data || []).slice(0, 10).map(trade => ({
+      date: moment(trade.transactionDate).format('ll'),
+      name: trade.name,
+      activity: trade.transactionCode,
+      value: `$${Number(trade.transactionPrice || 0).toLocaleString()}`,
+    }));
+
+    // === Hedge Fund Ownership (13F)
+    const { data: hfOwnership } = await axios.get(`https://finnhub.io/api/v1/stock/ownership`, {
+      params: { symbol, token: FINNHUB_API_KEY },
+    });
+    // console.log( hfOwnership)
+
+    const hedgeFundActivity = (hfOwnership.ownership || []).slice(0, 10).map(h => ({
+      date: moment(h.filingDate).format('ll'),
+      name: h.name,
+      activity: 'Reported',
+      value: `$${Number(h.change || 0).toLocaleString()}`,
+    }));
+
+    res.json({
+      breakdown,
+      insiderTrades,
+      hedgeFundActivity,
+      topShareHolders,
+      topMutualFundHolders,
+      topETFHolders,
+    });
+  } catch (err) {
+    console.error('Ownership overview error:', err.message);
+    res.status(500).json({ error: 'Failed to fetch ownership overview' });
+  }
+};
+
+
