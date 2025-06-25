@@ -4,6 +4,7 @@ const News = require('../models/newsAdmin.model');
 const User = require('../models/user.model');
 const { uploadOnCloudinary } = require('../utils/cloudnary');
 const moment = require('moment');
+const Protfolio = require('../models/protfolio.model');
 const cloudinary = require("cloudinary").v2;
 
 
@@ -339,36 +340,53 @@ exports.deepReSearch = async (req, res) => {
 
 exports.getMultipleCompanyNews = async (req, res) => {
   try {
-    const { symbols } = req.body; // Expecting an array of symbols like ["AAPL", "GOOGL"]
-    if (!Array.isArray(symbols) || symbols.length === 0) {
+    const { protfolioId } = req.body; // e.g., ["AAPL", "GOOGL"]
+    
+    const portfolio = await Protfolio.findById(protfolioId);
+    console.log(portfolio)
+    
+    if (!Array.isArray(portfolio.stocks) || portfolio.stocks === 0) {
       return res.status(400).json({ error: 'symbols array is required in body' });
     }
 
     const from = moment().subtract(7, 'days').format('YYYY-MM-DD');
     const to = moment().format('YYYY-MM-DD');
 
-    const results = await Promise.all(
-      symbols.map(async (symbol) => {
+    let allNews = [];
+
+    await Promise.all(
+      portfolio.stocks.map(async (stcoks) => {
+        console.log(stcoks)
         try {
           const { data } = await axios.get('https://finnhub.io/api/v1/company-news', {
             params: {
-              symbol: symbol.toUpperCase(),
+              symbol: stcoks.symbol.toUpperCase(),
               from,
               to,
               token: process.env.FINHUB_API_KEY
             }
           });
-          return { symbol: symbol.toUpperCase(), news: data };
+
+          // Add symbol to each article for traceability
+          const taggedNews = data.map(article => ({
+            ...article,
+            symbol: stcoks.symbol.toUpperCase()
+          }));
+
+          allNews = allNews.concat(taggedNews);
         } catch (err) {
-            console.error('Error fetching news for symbol:', symbol, err);
-          return { symbol: symbol.toUpperCase(), error: 'Failed to fetch news' };
+          console.warn(`Error fetching news for ${symbol}:`, err.message);
         }
       })
     );
 
-    res.json(results);
+    // Sort all news by datetime descending and take the most recent 30
+    allNews.sort((a, b) => b.datetime - a.datetime);
+    const recentNews = allNews.slice(0, 30);
+
+    res.json(recentNews);
   } catch (err) {
-    console.error('Multi-symbol news fetch error:', err);
+    console.error('Multi-symbol news fetch error:', err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 };

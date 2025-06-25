@@ -946,6 +946,8 @@ exports.getRevenueBreakdown = async (req, res) => {
 exports.getStockOfTheMonth = async (req, res) => {
   try {
     const monthName = new Date().toLocaleString('default', { month: 'long' });
+    const now = moment();
+    const oneMonthAgo = moment().subtract(30, 'days');
 
     const stocks = await Olive.find({ financial_health: 'good', compatitive_advantage: 'good' })
       .sort({ fair_value: 1 }); // most undervalued at the top
@@ -955,38 +957,87 @@ exports.getStockOfTheMonth = async (req, res) => {
     const enrichedStocks = await Promise.all(
       stocks.map(async (stock) => {
         try {
-          const [rec, pt] = await Promise.all([
-            axios.get('https://finnhub.io/api/v1/stock/recommendation', {
-              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY }
-            }),
-            axios.get('https://finnhub.io/api/v1/stock/price-target', {
-              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY }
-            })
-          ]);
-
-          const latestRec = rec.data[0] || {};
-          const latestPt = pt.data || {};
-
-          return {
-            symbol: stock.symbol,
-            stockRating: latestRec.rating || 'N/A',
-            analystTarget: `$${latestPt.targetMean?.toFixed(2) || '0.00'} (${latestPt.targetPercent?.toFixed(2) || '0.00'}%)`,
-            ratingTrend: {
-              buy: latestRec.buy || 0,
-              hold: latestRec.hold || 0,
-              sell: latestRec.sell || 0
+        // Fetch data in parallel
+        const [profileRes, recRes, ptRes, candleRes] = await Promise.all([
+          axios.get('https://finnhub.io/api/v1/stock/profile2', {
+            params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
+          }),
+          axios.get('https://finnhub.io/api/v1/stock/recommendation', {
+            params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
+          }),
+          axios.get('https://finnhub.io/api/v1/stock/price-target', {
+            params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
+          }),
+          axios.get('https://finnhub.io/api/v1/stock/candle', {
+            params: {
+              symbol: stock.symbol,
+              resolution: 'D',
+              from: Math.floor(oneMonthAgo.valueOf() / 1000),
+              to: Math.floor(now.valueOf() / 1000),
+              token: process.env.FINHUB_API_KEY,
             },
-            monthChange: stock.monthChange || '0.00%', // optional if stored
-            marketCap: stock.marketCap || '$0',
-            month: monthName,
-            sector: stock.sector || 'N/A'
-          };
-        } catch (err) {
-          return {
-            symbol: stock.symbol,
-            error: 'Failed to fetch rating/price target data'
-          };
-        }
+          }),
+        ]);
+        // console.log( profileRes)
+
+        const profile = profileRes.data;
+        const recommendation = recRes.data[0] || {};
+        const priceTarget = ptRes.data || {};
+        const candles = candleRes.data;
+
+        // Calculate 1-month return
+        const closes = candles?.c || [];
+        const oneMonthReturn = (closes.length >= 2)
+          ? (((closes[closes.length - 1] - closes[0]) / closes[0]) * 100).toFixed(2)
+          : '0.00';
+
+        // Olive logic
+        const olive = await Olive.findOne({ symbol: stock.symbol });
+        let quadrant = 'Yellow';
+        let valuationColor = 'yellow';
+
+        const quotePrice = closes[closes.length - 1] || 0;
+        const fairValue = olive?.fair_value || quotePrice;
+
+        if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+        else if (olive?.financial_health === "good") quadrant = 'Lime Green';
+        else if (olive?.compatitive_advantage === "good") quadrant = 'Orange';
+
+        const valuationDiff = ((quotePrice - fairValue) / fairValue) * 100;
+        if (valuationDiff < -10) valuationColor = 'green';
+        else if (valuationDiff > 10) valuationColor = 'red';
+
+        const olives = {
+          financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+          competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+          valuation: quotePrice <= fairValue * 1.1 ? 'green' : 'gray',
+        };
+
+        return {
+          symbol: stock.symbol,
+          companyName: profile.name || '',
+          logo: profile.logo || '',
+          sector: profile.finnhubIndustry || 'N/A',
+          marketCap: profile.marketCapitalization
+            ? `$${Number(profile.marketCapitalization).toLocaleString()}`
+            : '$0',
+          oneMonthReturn: `${oneMonthReturn}%`,
+          stockRating: recommendation.rating || 'N/A',
+          analystTarget: `$${priceTarget.targetMean?.toFixed(2) || '0.00'} (${priceTarget.targetPercent?.toFixed(2) || '0.00'}%)`,
+          ratingTrend: {
+            buy: recommendation.buy || 0,
+            hold: recommendation.hold || 0,
+            sell: recommendation.sell || 0,
+          },
+          quadrant,
+          valuationColor,
+          olives,
+          month: monthName,
+        };
+      } catch (err) {
+        console.warn(`Failed to fetch data for`, err.message);
+        return null;
+      }
       })
     );
 
