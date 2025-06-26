@@ -1,3 +1,4 @@
+const { sendMail } = require("../config/mailer");
 const User = require("../models/user.model");
 
 
