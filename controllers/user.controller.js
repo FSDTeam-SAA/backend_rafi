@@ -84,3 +84,33 @@ exports.singleUser = async (req, res) => {
     })
   }
 }
+
+exports.support = async (req, res) => {
+  try {
+    const { firstName, lastName, email, message, subject, phoneNumber } = req.body;
+
+    const fullName = `${firstName} ${lastName}`;
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; padding: 20px; border: 1px solid #eee;">
+        <h2>New Support Request</h2>
+        <p><strong>Name:</strong> ${fullName}</p>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Phone Number:</strong> ${phoneNumber || 'N/A'}</p>
+        <p><strong>Subject:</strong> ${subject}</p>
+        <p><strong>Message:</strong></p>
+        <div style="background-color: #f9f9f9; padding: 10px; border-radius: 4px;">
+          ${message}
+        </div>
+      </div>
+    `;
+
+    await sendMail(process.env.SUPPORT_EMAIL, `Support Request: ${subject}`, htmlContent);
+
+    res.status(200).json({ message: 'Support request sent successfully.' });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to send support request.' });
+  }
+};

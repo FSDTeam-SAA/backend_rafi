@@ -1471,3 +1471,313 @@ exports.getOwnershipOverview = async (req, res) => {
 };
 
 
+exports.getOptionsChain = async (req, res) => {
+  try {
+    const { symbol } = req.params;
+
+    if (!symbol) {
+      return res.status(400).json({ error: "Symbol is required" });
+    }
+
+    // Get available expiration dates
+    const { data: expiryData } = await axios.get(
+      `https://finnhub.io/api/v1/stock/option-chain`,
+      {
+        params: { symbol, token: FINNHUB_API_KEY },
+      }
+    );
+
+    const expirations = expiryData.data?.map((item) => item.expirationDate);
+    console.log( expirations );
+    if (!Array.isArray(expiryData.data) || !expiryData.data.length) {
+      return res.status(404).json({ error: "No option data available" });
+    }
+
+    // Collect formatted output for each expiration
+    const optionsByExpiry = await Promise.all(
+      expiryData.data.slice(0,10).map(async (exp) => {
+        console.log( exp );
+        // const { expirationDate } = exp;
+
+        // // Fetch full chain data for each expiry
+        // const { data: chain } = await axios.get(
+        //   `https://finnhub.io/api/v1/stock/option-chain`,
+        //   {
+        //     params: { symbol, expiration: expirationDate, token: FINNHUB_API_KEY },
+        //   }
+        // );
+        console
+
+        const calls = exp.options.CALL;
+        const puts =exp.options.PUT;
+
+        return {
+          expirationDate: exp.expirationDate,
+          calls: calls.map((opt) => ({
+            lastPrice: `$${opt.lastPrice.toFixed(2)}`,
+            percentChange: `${opt.changePercent.toFixed(2)}%`,
+            volume: opt.volume,
+            openInterest: opt.openInterest,
+            lastTrade: moment(opt.lastTradeDate).format("MM/DD/YYYY, hh:mm A"),
+            strike: opt.strike,
+          })),
+          puts: puts.map((opt) => ({
+            lastPrice: `$${opt.lastPrice.toFixed(2)}`,
+            percentChange: `${opt.changePercent.toFixed(2)}%`,
+            volume: opt.volume,
+            openInterest: opt.openInterest,
+            lastTrade: moment(opt.lastTradeDate).format("MM/DD/YYYY, hh:mm A"),
+            strike: opt.strike,
+          })),
+        };
+      })
+    );
+
+    res.json({
+      symbol,
+      expirations: expirations || [],
+      data: optionsByExpiry,
+    });
+  } catch (err) {
+    console.error("Options chain fetch error:", err.message);
+    res.status(500).json({ error: "Failed to fetch options data" });
+  }
+};
+
+
+// exports.getSimilarStocksAndPerformance = async (req, res) => {
+//   try {
+//     const { symbol } = req.params;
+//     if (!symbol) return res.status(400).json({ error: "Symbol is required" });
+
+//     // 1. Fetch similar companies
+//     const { data: similarSymbols } = await axios.get(
+//       `https://finnhub.io/api/v1/stock/peers`,
+//       {
+//         params: { symbol, token: FINNHUB_API_KEY },
+//       }
+//     );
+
+//     if (!similarSymbols.length)
+//       return res.status(404).json({ error: "No similar stocks found" });
+
+//     // Limit to 5-10 for performance
+//     const symbols = similarSymbols.slice(0, 5);
+
+//     const results = await Promise.all(
+//       symbols.map(async (sym) => {
+//         try {
+//           const [
+//             { data: quote },
+//             { data: profile },
+//             { data: metrics },
+//             { data: recommendation },
+//           ] = await Promise.all([
+//             axios.get("https://finnhub.io/api/v1/quote", {
+//               params: { symbol: sym, token: FINNHUB_API_KEY },
+//             }),
+//             axios.get("https://finnhub.io/api/v1/stock/profile2", {
+//               params: { symbol: sym, token: FINNHUB_API_KEY },
+//             }),
+//             axios.get("https://finnhub.io/api/v1/stock/metric", {
+//               params: { symbol: sym, metric: "all", token: FINNHUB_API_KEY },
+//             }),
+//             axios.get("https://finnhub.io/api/v1/stock/recommendation", {
+//               params: { symbol: sym, token: FINNHUB_API_KEY },
+//             }),
+//           ]);
+
+//           const analyst = recommendation?.[0] || {};
+
+//           return {
+//             ticker: sym,
+//             companyName: profile.name,
+//             price: quote.c?.toFixed(2),
+//             marketCap: metrics.metric?.marketCapitalization
+//               ? `$${Number(metrics.metric.marketCapitalization).toFixed(2)}B`
+//               : "-",
+//             peRatio: metrics.metric?.peNormalizedAnnual?.toFixed(2) || "-",
+//             yearlyGain: ((quote.c - quote.pc) / quote.pc * 100).toFixed(2) + "%",
+//             analystConsensus: analyst.recommendation || "N/A",
+//             analystPriceTarget:
+//               analyst.targetMean ? `$${analyst.targetMean.toFixed(2)}` : "-",
+//             topAnalystPriceTarget:
+//               analyst.targetHigh ? `$${analyst.targetHigh.toFixed(2)}` : "-",
+//             change: (quote.c - quote.pc).toFixed(2),
+//             percentChange: (((quote.c - quote.pc) / quote.pc) * 100).toFixed(2) + "%",
+//           };
+//         } catch (error) {
+//           console.warn(`Failed fetching for ${sym}`, error.message);
+//           return null;
+//         }
+//       })
+//     );
+
+//     const cleaned = results.filter(Boolean);
+
+//     res.json({
+//       similarStocks: cleaned,
+//       performanceComparison: cleaned.map((s) => ({
+//         ticker: s.ticker,
+//         companyName: s.companyName,
+//         price: s.price,
+//         change: s.change,
+//         percentChange: s.percentChange,
+//       })),
+//     });
+//   } catch (err) {
+//     console.error("Similar stocks fetch error:", err.message);
+//     res.status(500).json({ error: "Failed to fetch similar stocks" });
+//   }
+// };
+
+
+
+
+
+
+const getHistoricalPrice = async (symbol, from) => {
+  const now = Math.floor(Date.now() / 1000);
+  const fromSec = Math.floor(from / 1000);
+  try {
+    const { data } = await axios.get("https://finnhub.io/api/v1/stock/candle", {
+      params: {
+        symbol,
+        resolution: "D",
+        from: fromSec,
+        to: now,
+        token: FINNHUB_API_KEY,
+      },
+    });
+
+    if (data.s !== "ok" || !data.c.length) return null;
+
+    return {
+      old: data.c[0],
+      latest: data.c[data.c.length - 1],
+      labels: data.t.map((ts) => new Date(ts * 1000).toISOString().split("T")[0]),
+      prices: data.c,
+    };
+  } catch (err) {
+    console.error(`Error getting historical for ${symbol}:`, err.message);
+    return null;
+  }
+};
+
+exports.getSimilarStocksAndPerformance = async (req, res) => {
+  try {
+    const { symbol } = req.params;
+    const { period = "2y" } = req.query;
+
+    if (!symbol) return res.status(400).json({ error: "Symbol is required" });
+
+    const now = Date.now();
+    const durations = {
+      "3M": moment(now).subtract(3, "months").toDate().getTime(),
+      "6M": moment(now).subtract(6, "months").toDate().getTime(),
+      "1Y": moment(now).subtract(1, "year").toDate().getTime(),
+      "2Y": moment(now).subtract(2, "years").toDate().getTime(),
+    };
+
+    const { data: peers } = await axios.get("https://finnhub.io/api/v1/stock/peers", {
+      params: { symbol, token: FINNHUB_API_KEY },
+    });
+
+    const symbols = peers.slice(0, 5);
+
+    const fullData = await Promise.all(
+      symbols.map(async (sym) => {
+        try {
+          const [quote, profile, metrics, recs] = await Promise.all([
+            axios.get("https://finnhub.io/api/v1/quote", {
+              params: { symbol: sym, token: FINNHUB_API_KEY },
+            }),
+            axios.get("https://finnhub.io/api/v1/stock/profile2", {
+              params: { symbol: sym, token: FINNHUB_API_KEY },
+            }),
+            axios.get("https://finnhub.io/api/v1/stock/metric", {
+              params: { symbol: sym, metric: "all", token: FINNHUB_API_KEY },
+            }),
+            axios.get("https://finnhub.io/api/v1/stock/recommendation", {
+              params: { symbol: sym, token: FINNHUB_API_KEY },
+            }),
+          ]);
+
+          const analyst = recs?.data?.[0] || {};
+          const history = {};
+          const chartData = await getHistoricalPrice(sym, durations[period.toUpperCase()] || durations["2Y"]);
+
+          for (const [label, from] of Object.entries(durations)) {
+            const result = await getHistoricalPrice(sym, from);
+            if (result) {
+              const { old, latest } = result;
+              const change = latest - old;
+              const percent = ((change / old) * 100).toFixed(2);
+              history[label] = { change: change.toFixed(2), percent: `${percent}%` };
+            } else {
+              history[label] = { change: "-", percent: "-" };
+            }
+          }
+
+          return {
+            ticker: sym,
+            companyName: profile.data.name,
+            price: quote.data.c?.toFixed(2),
+            marketCap: metrics.data.metric?.marketCapitalization
+              ? `$${Number(metrics.data.metric.marketCapitalization).toFixed(2)}B`
+              : "-",
+            peRatio: metrics.data.metric?.peNormalizedAnnual?.toFixed(2) || "-",
+            yearlyGain: history["1Y"]?.percent || "-",
+            analystConsensus: analyst.recommendation || "N/A",
+            analystPriceTarget: analyst.targetMean ? `$${analyst.targetMean.toFixed(2)}` : "-",
+            topAnalystPriceTarget: analyst.targetHigh ? `$${analyst.targetHigh.toFixed(2)}` : "-",
+            // performanceComparison: history,
+            chartRawPrices: chartData?.prices || [],
+            chartPercentReturns: chartData?.prices.map((p) =>
+              (((p - chartData.prices[0]) / chartData.prices[0]) * 100).toFixed(2)
+            ) || [],
+            chartLabels: chartData?.labels || [],
+          };
+        } catch (err) {
+          console.error(`Error loading stock ${sym}:`, err.message);
+          return null;
+        }
+      })
+    );
+
+    const valid = fullData.filter(Boolean);
+
+    const labels = valid[0]?.chartLabels || [];
+    const rawPriceChart = valid.map((s) => ({
+      label: s.ticker,
+      data: s.chartRawPrices,
+    }));
+    const percentReturnChart = valid.map((s) => ({
+      label: s.ticker,
+      data: s.chartPercentReturns,
+    }));
+
+    res.json({
+      similarStocks: valid.map((s) => ({
+        ticker: s.ticker,
+        companyName: s.companyName,
+        price: s.price,
+        marketCap: s.marketCap,
+        peRatio: s.peRatio,
+        yearlyGain: s.yearlyGain,
+        analystConsensus: s.analystConsensus,
+        analystPriceTarget: s.analystPriceTarget,
+        topAnalystPriceTarget: s.topAnalystPriceTarget,
+        performanceComparison: s.performanceComparison,
+      })),
+      chartData: {
+        labels,
+        rawPriceChart,
+        percentReturnChart,
+      },
+    });
+  } catch (err) {
+    console.error("Full similar stocks error:", err.message);
+    res.status(500).json({ error: "Failed to load full similar stocks data" });
+  }
+};
