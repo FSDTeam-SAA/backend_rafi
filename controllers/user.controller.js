@@ -1,5 +1,6 @@
 const { sendMail } = require("../config/mailer");
 const User = require("../models/user.model");
+const { uploadOnCloudinary } = require("../utils/cloudnary");
 
 
 exports.updateUser = async (req, res) => {
@@ -16,9 +17,10 @@ exports.updateUser = async (req, res) => {
     let imageLink
     if (req.file) {
       try {
-        const image = await uploadOnCloudinary(req.file.buffer, 'users');
+        const image = await uploadOnCloudinary(req.file.buffer);
         imageLink = image.secure_url;
       } catch (error) {
+        console.log( error);
         return res.status(400).json({
           status: false,
           message: 'Failed to upload image',
