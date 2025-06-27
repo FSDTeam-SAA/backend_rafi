@@ -5,29 +5,41 @@ const protfolioSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true
-      },
+    },
     user: {
       type: mongoose.Schema.Types.ObjectId,
       required: true,
       ref: 'User',
     },
     stocks: [
-        {
-            symbol: {
-                type: String,
-            },
-            quantity: {
-              type: Number,
-              },
-            price: {
-              type: Number,
-            },
-            date: {
-              type: Date,
-              default: Date.now(),
-            }
+      {
+        symbol: {
+          type: String,
+        },
+        quantity: {
+          type: Number,
+        },
+        price: {
+          type: Number,
+        },
+        date: {
+          type: Date,
+          default: Date.now(),
+        },
+        transection: [{
+          event: {
+            type: String,
+            enum: ['buy', 'sell'],
+          },
+          price: {
+            type: Number,
+          },
+          quantity: {
+            type: Number,
+          },
+        }]
 
-        }
+      }
     ],
     cash: {
       type: Number,

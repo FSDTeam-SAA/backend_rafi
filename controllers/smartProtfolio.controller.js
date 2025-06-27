@@ -651,6 +651,51 @@ exports.getProtfolioById = async (req, res) => {
 //   });
 // };
 
+// exports.addStockProtfolio = async (req, res) => {
+//   const { portfolioId, symbol, quantity, price, symbols } = req.body;
+
+//   const portfolio = await Protfolio.findById(portfolioId);
+//   if (!portfolio) {
+//     return res.status(404).send({ message: 'Portfolio not found' });
+//   }
+
+//   if (symbols && Array.isArray(symbols) && symbols.length > 0) {
+//     // Batch add mode
+//     symbols.forEach((sym) => {
+//       const exists = portfolio.stocks.find((s) => s.symbol === sym.symbol);
+//       if (!exists) {
+//         portfolio.stocks.push({ symbol: sym.symbol, quantity: 1, price: sym.price });
+//       }
+//     });
+
+//     await portfolio.save();
+//     return res.status(201).send({
+//       message: 'Symbols added to portfolio',
+//       portfolio,
+//     });
+//   }
+
+//   if (!symbol) {
+//     return res.status(400).send({ message: 'Symbol is required for single stock add/update' });
+//   }
+
+//   const stockIndex = portfolio.stocks.findIndex((stock) => stock.symbol === symbol);
+
+//   if (stockIndex !== -1) {
+//     portfolio.stocks[stockIndex].quantity = quantity;
+//     if (price !== undefined) portfolio.stocks[stockIndex].price = price;
+//   } else {
+//     portfolio.stocks.push({ symbol, quantity, price });
+//   }
+
+//   await portfolio.save();
+
+//   res.status(201).send({
+//     message: stockIndex !== -1 ? 'Stock quantity updated' : 'Stock added to portfolio',
+//     portfolio,
+//   });
+// };
+
 exports.addStockProtfolio = async (req, res) => {
   const { portfolioId, symbol, quantity, price, symbols } = req.body;
 
@@ -663,8 +708,23 @@ exports.addStockProtfolio = async (req, res) => {
     // Batch add mode
     symbols.forEach((sym) => {
       const exists = portfolio.stocks.find((s) => s.symbol === sym.symbol);
+      const transactionEntry = {
+        event: 'buy',
+        quantity: 1,
+        price: sym.price,
+      };
+
       if (!exists) {
-        portfolio.stocks.push({ symbol: sym.symbol, quantity: 1, price: sym.price });
+        portfolio.stocks.push({
+          symbol: sym.symbol,
+          quantity: 1,
+          price: sym.price,
+          transection: [transactionEntry],
+        });
+      } else {
+        exists.quantity += 1;
+        exists.price = sym.price;
+        exists.transection.push(transactionEntry);
       }
     });
 
@@ -679,23 +739,56 @@ exports.addStockProtfolio = async (req, res) => {
     return res.status(400).send({ message: 'Symbol is required for single stock add/update' });
   }
 
-  const stockIndex = portfolio.stocks.findIndex((stock) => stock.symbol === symbol);
+  const stock = portfolio.stocks.find((s) => s.symbol === symbol);
+  const transactionEntry = {
+    event: 'buy',
+    quantity,
+    price,
+  };
 
-  if (stockIndex !== -1) {
-    portfolio.stocks[stockIndex].quantity = quantity;
-    if (price !== undefined) portfolio.stocks[stockIndex].price = price;
+  if (stock) {
+    stock.quantity = quantity;
+    if (price !== undefined) stock.price = price;
+    stock.transection.push(transactionEntry);
   } else {
-    portfolio.stocks.push({ symbol, quantity, price });
+    portfolio.stocks.push({
+      symbol,
+      quantity,
+      price,
+      transection: [transactionEntry],
+    });
   }
 
   await portfolio.save();
 
   res.status(201).send({
-    message: stockIndex !== -1 ? 'Stock quantity updated' : 'Stock added to portfolio',
+    message: stock ? 'Stock updated with transaction' : 'New stock added with transaction',
     portfolio,
   });
 };
 
+
+// exports.deleteStockFromPortfolio = async (req, res) => {
+//   const { portfolioId, symbol } = req.body;
+
+//   const portfolio = await Protfolio.findById(portfolioId);
+//   if (!portfolio) {
+//     return res.status(404).send({ message: 'Portfolio not found' });
+//   }
+
+//   const stockIndex = portfolio.stocks.findIndex(s => s.symbol === symbol);
+//   if (stockIndex === -1) {
+//     return res.status(404).send({ message: 'Stock not found in portfolio' });
+//   }
+
+//   portfolio.stocks.splice(stockIndex, 1); // remove the stock
+//   await portfolio.save();
+
+//   res.status(200).send({
+//     message: 'Stock removed from portfolio',
+//     portfolio,
+//   });
+// };
 
 
 exports.deleteStockFromPortfolio = async (req, res) => {
@@ -719,6 +812,45 @@ exports.deleteStockFromPortfolio = async (req, res) => {
     portfolio,
   });
 };
+
+exports.deleteTransaction = async (req, res) => {
+  const { portfolioId, symbol, transactionIndex } = req.body;
+
+  const portfolio = await Protfolio.findById(portfolioId);
+  if (!portfolio) {
+    return res.status(404).send({ message: 'Portfolio not found' });
+  }
+
+  const stock = portfolio.stocks.find(s => s.symbol === symbol);
+  if (!stock) {
+    return res.status(404).send({ message: 'Stock not found in portfolio' });
+  }
+
+  if (
+    !stock.transection ||
+    transactionIndex < 0 ||
+    transactionIndex >= stock.transection.length
+  ) {
+    return res.status(400).send({ message: 'Invalid transaction index' });
+  }
+
+  // Remove transaction
+  stock.transection.splice(transactionIndex, 1);
+
+  // Optional: Recalculate stock quantity
+  const totalQuantity = stock.transection.reduce((sum, t) => {
+    return t.event === 'buy' ? sum + t.quantity : sum - t.quantity;
+  }, 0);
+  stock.quantity = totalQuantity;
+
+  await portfolio.save();
+
+  res.status(200).send({
+    message: 'Transaction deleted successfully',
+    portfolio,
+  });
+};
+
 
 exports.getCalendarEvents = async (req, res) => {
   try {
