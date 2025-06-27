@@ -36,6 +36,9 @@ const financialStatementsRoutes = require("./routes/financialStatements.route");
 const oliveRoutes = require("./routes/olive.route");
 const qualityStcoks = require("./routes/qualityStocks.route");
 const { default: axios } = require("axios");
+const WatchList = require("./models/watchList.model");
+const { finnhubSocket, subscribeSymbol, subscribeAllDistinctSymbols } = require("./utils/finnhubSocket");
+const notification = require("./models/notificatiuon.model");
 
 
 
@@ -103,12 +106,18 @@ const FINNHUB_TOKEN = process.env.FINHUB_API_KEY; // Replace with your real key
 const openPrices = new Map();
 
 // Create Finnhub WebSocket
-const finnhubSocket = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_TOKEN}`);
+// const finnhubSocket = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_TOKEN}`);
 
-// Subscribe to symbol updates
-const subscribeSymbol = (symbol) => {
-  finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
-};
+// // Subscribe to symbol updates
+// const subscribeSymbol = (symbol) => {
+//   finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
+// };
+// function sendSubscribeMessage(symbol){
+
+
+//     finnhubSocket.send(JSON.stringify({ type: 'subscribe-news', symbol }));
+  
+// }
 
 // Get open price via REST API
 const fetchOpenPrice = async (symbol) => {
@@ -142,8 +151,9 @@ const fetchOpenPrice = async (symbol) => {
   }
 };
 
+// console.log(finnhubSocket)
 // WebSocket message from Finnhub
-finnhubSocket.on('message', (data) => {
+finnhubSocket.on('message', async (data) => {
   const parsed = JSON.parse(data);
   console.log(parsed)
   if (parsed.type === 'trade') {
@@ -168,6 +178,37 @@ finnhubSocket.on('message', (data) => {
       });
     });
   }
+if (parsed.type === 'news') {
+  const newsArray = Array.isArray(parsed.data) ? parsed.data : [parsed.data]; // normalize to array
+  console.log("news", newsArray)
+
+
+  // Loop over each news item and notify users
+  for (const newsItem of newsArray) {
+    const { headline, summary, url, datetime, source,related } = newsItem;
+  const watchlists = await WatchList.find({ "stocks.symbol": related }).select("user");
+
+
+    for (const watch of watchlists) {
+      const userId = watch.user.toString();
+
+      // Save notification to DB
+      await notification.create({
+        userId,
+        message: headline,
+        related: related,
+        link: url,
+        type: 'news'
+      });
+
+      // Emit news to frontend
+      io.to(userId).emit("news", {
+        related,
+        news: newsItem
+      });
+    }
+  }
+}
 });
 
 // Socket.IO connection
@@ -181,12 +222,19 @@ io.on('connection', async (socket) => {
     await fetchOpenPrice(symbol);
     subscribeSymbol(symbol);
   }
+  socket.on("joinRoom", (userId) => {
+    if (userId) {
+      socket.join(userId);
+      console.log(`Client ${socket.id} joined user room: ${userId}`);
+    }
+  });
 
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
 });
 
+subscribeAllDistinctSymbols()
 
 
 // Error handler middleware

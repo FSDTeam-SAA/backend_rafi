@@ -150,6 +150,8 @@ const Olive = require('../models/stcoks.olive.model');
 const protfolio = require('../models/protfolio.model');
 const qualityStocks = require('../models/qualityStcoks.model');
 const WatchList = require('../models/watchList.model');
+const { sendSubscribeMessage } = require('../utils/finnhubSocket');
+// const { finnhubSocket } = require('../app');
 
 const api_key = finnhub.ApiClient.instance.authentications['api_key'];
 api_key.apiKey = process.env.FINHUB_API_KEY;
@@ -1240,6 +1242,10 @@ exports.addToWatchList = async (req, res) => {
   if (!symbol) {
     return res.status(400).json({ error: 'Symbol is required' });
   }
+  // Create Finnhub WebSocket
+  // const finnhubSocket = new WebSocket(`wss://ws.finnhub.io?token=${process.env.FINHUB_API_KEY}`);
+  sendSubscribeMessage(symbol)
+
 
   let watchlist = await WatchList.findOne({ user });
 

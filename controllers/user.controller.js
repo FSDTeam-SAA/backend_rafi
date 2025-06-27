@@ -1,4 +1,5 @@
 const { sendMail } = require("../config/mailer");
+const Notification = require("../models/notificatiuon.model");
 const User = require("../models/user.model");
 const { uploadOnCloudinary } = require("../utils/cloudnary");
 
@@ -117,3 +118,13 @@ exports.support = async (req, res) => {
     res.status(500).json({ error: 'Failed to send support request.' });
   }
 };
+
+exports.getNotification = async (req, res) =>{
+  try {
+    const userId = req.user._id
+    const notification = await Notification.find({userId: userId})
+    res.status(200).send(notification)
+  } catch (error) {
+    res.status(500).send({error: 'Failed to get notification.'})
+  }
+}
