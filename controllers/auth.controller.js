@@ -342,8 +342,8 @@ const changePassword = async (req, res) => {
       })
     }
 
-    const hash = await bcrypt.hash(newPassword, 10)
-    user.password = hash
+    // const hash = await bcrypt.hash(newPassword, 10)
+    user.password = newPassword
 
     await user.save()
 
