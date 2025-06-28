@@ -31,12 +31,17 @@ exports.uploadCSV = async (req, res) => {
             .on('end', async () => {
                 const upserts = results.map(row =>
                     Olive.findOneAndUpdate(
-                        { symbol: row.symbol.toUpperCase() },
+                        { symbol: row.Ticker.toUpperCase() },
                         {
-                            symbol: row.symbol.toUpperCase(),
-                            fair_value: Number(row.fair_value),
-                            financial_health: row.financial_health,
-                            compatitive_advantage: row.compatitive_advantage
+                            symbol: row.Ticker.toUpperCase(),
+                            fair_value: Number( row.FairValue ) ? Number( row.FairValue) : 0,
+                            financial_health: row.FinancialHealth.toLowerCase(),
+                            compatitive_advantage: row.CompetitiveAdvantage.toLowerCase(),
+                            ComplianceStatus: row.ComplianceStatus,
+                            QualitativeStatus: row.QualitativeStatus,
+                            QualitativeReason: row.QualitativeReason,
+                            QuantitativeStatus: row.QuantitativeStatus,
+                            QuantitativeReason: row.QuantitativeReason,
                         },
                         { upsert: true, new: true }
                     )
