@@ -676,29 +676,130 @@ exports.getDividends = async (req, res) => {
 };
 
 // Asset Allocation (mock breakdown from profile)
-exports.getAssetAllocation = async (req, res) => {
-  const { symbols } = req.body;
-  try {
-    const allocation = await Promise.all(
-      symbols.map(async (symbol) => {
-        const profile = await new Promise((resolve, reject) => {
-          finnhubClient.companyProfile2({ symbol }, (error, data) => {
-            if (error) reject(error);
-            else resolve(data);
-          });
-        });
+// exports.getAssetAllocation = async (req, res) => {
+//   const { symbols } = req.body;
+//   try {
+//     const allocation = await Promise.all(
+//       symbols.map(async (symbol) => {
+//         const profile = await new Promise((resolve, reject) => {
+//           finnhubClient.companyProfile2({ symbol }, (error, data) => {
+//             if (error) reject(error);
+//             else resolve(data);
+//           });
+//         });
 
-        return {
-          symbol,
-          sector: profile.finnhubIndustry,
-          country: profile.country,
-        };
-      })
-    );
-    res.json({ allocation });
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: 'Error fetching asset allocation' });
+//         return {
+//           symbol,
+//           sector: profile.finnhubIndustry,
+//           country: profile.country,
+//         };
+//       })
+//     );
+//     res.json({ allocation });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ error: 'Error fetching asset allocation' });
+//   }
+// };
+
+exports.getAssetAllocation = async (req, res) => {
+  try {
+    const { portfolioId } = req.query;
+    if (!portfolioId) {
+      return res.status(400).json({ error: "Portfolio ID is required" });
+    }
+
+    const portfolio = await Protfolio.findById(portfolioId);
+    if (!portfolio) {
+      return res.status(404).json({ error: "Portfolio not found" });
+    }
+
+    const FINNHUB_TOKEN = process.env.FINHUB_API_KEY;
+    const holdings = portfolio.stocks;
+    const symbols = holdings.map(s => s.symbol);
+
+    let totalStockValue = 0;
+    const sectorBreakdown = {};
+    const detailedStats = [];
+
+    for (const stock of holdings) {
+      const symbol = stock.symbol;
+
+      const [profileRes, quoteRes, metricRes] = await Promise.all([
+        axios.get('https://finnhub.io/api/v1/stock/profile2', {
+          params: { symbol, token: FINNHUB_TOKEN }
+        }),
+        axios.get('https://finnhub.io/api/v1/quote', {
+          params: { symbol, token: FINNHUB_TOKEN }
+        }),
+        axios.get('https://finnhub.io/api/v1/stock/metric', {
+          params: { symbol, metric: 'all', token: FINNHUB_TOKEN }
+        })
+      ]);
+
+      const profile = profileRes.data;
+      const quote = quoteRes.data;
+      const metrics = metricRes.data.metric;
+
+      const currentValue = quote.c * stock.quantity;
+      totalStockValue += currentValue;
+
+      // Sector calculation
+      const sector = profile.finnhubIndustry || 'Unknown';
+      sectorBreakdown[sector] = (sectorBreakdown[sector] || 0) + currentValue;
+
+      detailedStats.push({
+        symbol,
+        name: profile.name,
+        sector,
+        currentValue,
+        beta: metrics.beta || 0,
+        peRatio: metrics.peBasicExclExtraTTM || 0,
+        dividendYield: metrics.dividendYieldIndicatedAnnual || 0,
+        warning: (metrics.evToEbitda || 0) > 25 || (metrics.peBasicExclExtraTTM || 0) > 40
+      });
+    }
+
+    const cash = portfolio.cash || 0;
+    const totalValue = totalStockValue + cash;
+
+    // Asset Allocation: Only Stocks and Cash
+    const assetAllocation = {
+      stocks: ((totalStockValue / totalValue) * 100).toFixed(2),
+      cash: ((cash / totalValue) * 100).toFixed(2)
+    };
+
+    // Sector chart breakdown
+    const holdingsBySector = Object.entries(sectorBreakdown).map(([sector, value]) => ({
+      sector,
+      percent: ((value / totalStockValue) * 100).toFixed(2)
+    }));
+
+    // Portfolio-level metrics
+    const totalBeta = detailedStats.reduce((sum, s) => sum + s.beta, 0);
+    const totalPE = detailedStats.reduce((sum, s) => sum + s.peRatio, 0);
+    const totalDiv = detailedStats.reduce((sum, s) => sum + s.dividendYield, 0);
+    const warnings = detailedStats.filter(s => s.warning);
+
+    const metrics = {
+      beta: (totalBeta / detailedStats.length).toFixed(2),
+      peRatio: (totalPE / detailedStats.length).toFixed(2),
+      dividendYield: (totalDiv / detailedStats.length).toFixed(2),
+      warnings: warnings.map(w => ({
+        symbol: w.symbol,
+        name: w.name
+      }))
+    };
+
+    return res.status(200).json({
+      assetAllocation,
+      holdingsBySector,
+      metrics
+    });
+
+  } catch (err) {
+    console.error("Error in getPortfolioMetrics:", err.message);
+    res.status(500).json({ error: "Failed to load portfolio metrics", detail: err.message });
   }
 };
 
@@ -749,6 +850,14 @@ exports.updateProtfolio = async (req, res) => {
   const _portfolio = await Protfolio.findByIdAndUpdate(portfolioId, { name, cash }, { new: true });
   res.status(201).send({
     message: 'Portfolio update successfully',
+    portfolio: _portfolio
+  });
+}
+exports.deleteProtfolio = async (req, res) => {
+  const portfolioId = req.params.id;
+  const _portfolio = await Protfolio.findByIdAndDelete(portfolioId);
+  res.status(201).send({
+    message: 'Portfolio Delete successfully',
     portfolio: _portfolio
   });
 }
@@ -956,40 +1065,39 @@ exports.deleteStockFromPortfolio = async (req, res) => {
 };
 
 exports.deleteTransaction = async (req, res) => {
-  const { portfolioId, symbol, transactionIndex } = req.body;
+  const { portfolioId, symbol, transactionId } = req.body;
 
   const portfolio = await Protfolio.findById(portfolioId);
   if (!portfolio) {
-    return res.status(404).send({ message: 'Portfolio not found' });
+    return res.status(404).json({ message: 'Portfolio not found' });
   }
 
   const stock = portfolio.stocks.find(s => s.symbol === symbol);
   if (!stock) {
-    return res.status(404).send({ message: 'Stock not found in portfolio' });
+    return res.status(404).json({ message: 'Stock not found in portfolio' });
   }
 
-  if (
-    !stock.transection ||
-    transactionIndex < 0 ||
-    transactionIndex >= stock.transection.length
-  ) {
-    return res.status(400).send({ message: 'Invalid transaction index' });
+  const exists = stock.transection.some(t => t._id.toString() === transactionId);
+  if (!exists) {
+    return res.status(404).json({ message: 'Transaction not found' });
   }
 
-  // Remove transaction
-  stock.transection.splice(transactionIndex, 1);
+  // ✅ Remove the transaction by filtering it out
+  stock.transection = stock.transection.filter(
+    t => t._id.toString() !== transactionId
+  );
+  console.log(stock.transection)
 
-  // Optional: Recalculate stock quantity
-  const totalQuantity = stock.transection.reduce((sum, t) => {
+  // ✅ Recalculate quantity
+  stock.quantity = stock.transection.reduce((sum, t) => {
     return t.event === 'buy' ? sum + t.quantity : sum - t.quantity;
   }, 0);
-  stock.quantity = totalQuantity;
 
   await portfolio.save();
 
-  res.status(200).send({
+  return res.status(200).json({
     message: 'Transaction deleted successfully',
-    portfolio,
+    updatedStock: stock,
   });
 };
 
