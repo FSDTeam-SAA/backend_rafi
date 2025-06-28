@@ -8,6 +8,7 @@ newsImage: { type: String, },
 views: { type: Number, default: 0 },
 symbol: { type: String},
 source : { type: String, },
+isPaid: { type: Boolean, default: false },
 // author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
 }, { timestamps: true });
 

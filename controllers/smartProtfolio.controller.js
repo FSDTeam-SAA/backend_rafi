@@ -1086,7 +1086,7 @@ exports.deleteTransaction = async (req, res) => {
   stock.transection = stock.transection.filter(
     t => t._id.toString() !== transactionId
   );
-  console.log(stock.transection)
+  // console.log(stock.transection)
 
   // ✅ Recalculate quantity
   stock.quantity = stock.transection.reduce((sum, t) => {

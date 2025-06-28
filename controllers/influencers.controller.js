@@ -3,7 +3,7 @@ const { uploadOnCloudinary } = require("../utils/cloudnary");
 
 exports.createInfluences = async (req, res) => {
     try {
-        const { userName, email, password, phoneNumber, address } = req.body;
+        const { fullName, email, password, phoneNumber, address } = req.body;
         const existUser = await User.findOne({ email });
         if (existUser) {
             return res.status(400).json({ message: "User already exists" });
@@ -21,7 +21,8 @@ exports.createInfluences = async (req, res) => {
             }
         }
         const user = await User.create({
-            userName,
+            fullName,
+            userName: fullName,
             email,
             password,
             phoneNumber,

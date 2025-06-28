@@ -11,7 +11,7 @@ const cloudinary = require("cloudinary").v2;
 //creating news
 exports.createNews = async (req, res) => {
     try {
-        const { symbol, newsTitle, newsDescription, source } = req.body;
+        const { symbol, newsTitle, newsDescription, source,isPaid } = req.body;
         // const author = req.user._id; 
         const date = new Date();
         const existingNews = await News.findOne({ newsTitle });
@@ -54,7 +54,8 @@ exports.createNews = async (req, res) => {
             date,
             // author,
             symbol,
-            source
+            source,
+            isPaid
         });
         await news.save();
         return res.status(201).json(
@@ -98,6 +99,7 @@ exports.uploadCSV = async (req, res) => {
                         // author,
                         symbol: data.symbol,
                         source: data.source,
+                        isPaid: data.isPaid
                     });
                 } catch (parseErr) {
                     // Log or skip malformed row
