@@ -301,12 +301,10 @@ const forgotPassword = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid OTP' })
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
-    await User.findByIdAndUpdate(user._id, {
-      password: hashedPassword,
-      password_reset_token: null,
-    })
-
+    // const hashedPassword = await bcrypt.hash(password, 10)
+    user.password = password
+    user.password_reset_token = null
+    await user.save()
     return res.json({ success: true, message: 'Password reset successfully' })
   } catch (err) {
     return res
@@ -344,7 +342,6 @@ const changePassword = async (req, res) => {
 
     // const hash = await bcrypt.hash(newPassword, 10)
     user.password = newPassword
-
     await user.save()
 
     res
