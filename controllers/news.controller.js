@@ -290,27 +290,50 @@ exports.deleteNews = async (req, res) => {
 
 
 exports.merketNewsFromAPi = async (req, res) => {
-    try {
-        const { category = "general" } = req.query;
-        const apiResponse = await axios.get(`https://finnhub.io/api/v1/news?category=${category}&token=${process.env.FINHUB_API_KEY}`)
-        const news = apiResponse.data;
+  try {
+    const { symbol, category = "general" } = req.query;
+    let news = [];
 
-        return res.status(200).json({
-            status: true,
-            message: 'News fetched successfully',
-            data: news
-        })
-    } catch (error) {
-        console.error('Error fetching news from API:', error);
-        return res.status(500).json(
-            {
-                status: false,
-                message: 'Error fetching news from API',
-                error: error.message,
-            })
+    if (symbol) {
+      const to = moment().format("YYYY-MM-DD");
+      const from = moment().subtract(30, "days").format("YYYY-MM-DD");
 
+      const apiResponse = await axios.get(`https://finnhub.io/api/v1/company-news`, {
+        params: {
+          symbol,
+          from,
+          to,
+          token: process.env.FINHUB_API_KEY,
+        },
+      });
+
+      news = apiResponse.data;
+    } else {
+      const apiResponse = await axios.get(`https://finnhub.io/api/v1/news`, {
+        params: {
+          category,
+          token: process.env.FINHUB_API_KEY,
+        },
+      });
+
+      news = apiResponse.data;
     }
-}
+
+    return res.status(200).json({
+      status: true,
+      message: "News fetched successfully",
+      data: news,
+    });
+  } catch (error) {
+    console.error("Error fetching news from API:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Error fetching news from API",
+      error: error.message,
+    });
+  }
+};
+
 
 exports.deepReSearch = async (req, res) => {
     try {
