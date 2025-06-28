@@ -404,7 +404,7 @@ exports.getPortfolioOverview = async (req, res) => {
           let totalCost = 0;
 
           holding.transection.forEach(tx => {
-            console.log( tx.event )
+            console.log(tx.event)
             if (tx.event === 'buy') {
               netQuantity += tx.quantity;
               totalCost += tx.price * tx.quantity;
@@ -418,7 +418,7 @@ exports.getPortfolioOverview = async (req, res) => {
           if (netQuantity <= 0) return null; // skip fully sold stocks
 
           const avgBuyPrice = totalCost / netQuantity;
-         
+
 
           const [companyProfile, quote, candleData, olive] = await Promise.all([
             new Promise((resolve) =>
@@ -488,7 +488,7 @@ exports.getPortfolioOverview = async (req, res) => {
             percent: quote.dp,
             value: currentValue.toFixed(2),
             unrealized: currentValue.toFixed(2) - (avgBuyPrice * netQuantity),
-            pL: ((currentValue.toFixed(2) - (avgBuyPrice * netQuantity))/(avgBuyPrice * netQuantity))*100,
+            pL: ((currentValue.toFixed(2) - (avgBuyPrice * netQuantity)) / (avgBuyPrice * netQuantity)) * 100,
             olives,
             quadrant,
             oneMonthReturn
@@ -837,7 +837,7 @@ exports.getProtfolioById = async (req, res) => {
 // };
 
 exports.addStockProtfolio = async (req, res) => {
-  const { portfolioId, symbol, quantity, price, symbols ,event} = req.body;
+  const { portfolioId, symbol, quantity, price, symbols, event } = req.body;
 
   const portfolio = await Protfolio.findById(portfolioId);
   if (!portfolio) {
@@ -887,9 +887,9 @@ exports.addStockProtfolio = async (req, res) => {
   };
 
   if (stock) {
-    if(event == 'buy') stock.quantity += quantity;
-    else if(event == 'sell') stock.quantity -= quantity;
-    
+    if (event == 'buy') stock.quantity += quantity;
+    else if (event == 'sell') stock.quantity -= quantity;
+
     // if (price !== undefined) stock.price = price;
     stock.transection.push(transactionEntry);
   } else {
@@ -994,10 +994,70 @@ exports.deleteTransaction = async (req, res) => {
 };
 
 
+// exports.getCalendarEvents = async (req, res) => {
+//   try {
+//     const from = moment().format('YYYY-MM-DD');
+//     const to = moment().add(3, 'months').format('YYYY-MM-DD');
+
+//     const [earningsRes, dividendsRes] = await Promise.all([
+//       axios.get('https://finnhub.io/api/v1/calendar/earnings', {
+//         params: { from, to, token: process.env.FINHUB_API_KEY }
+//       }),
+//       axios.get('https://finnhub.io/api/v1/calendar/dividends', {
+//         params: { from, to, token: process.env.FINHUB_API_KEY }
+//       })
+//     ]);
+
+//     const earnings = earningsRes.data.earningsCalendar || [];
+//     const dividends = dividendsRes.data.dividends || [];
+
+//     const formatEvent = (e, type) => ({
+
+//       symbol: e.symbol,
+//       type,
+//       date: e.date || e.exDate
+//     });
+
+//     const events = [
+//       ...earnings.map(e => formatEvent(e, 'Earnings Release')),
+//       ...dividends.map(e => formatEvent(e, 'Ex-Dividend Date'))
+//     ];
+
+//     events.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+//     res.json({ total: events.length, events });
+//   } catch (err) {
+//     console.error('Error fetching calendar events:', err.message);
+//     res.status(500).json({ error: 'Failed to fetch calendar events' });
+//   }
+// };
+
+
+// Helper to get S&P 500 index change over a period
+
+
 exports.getCalendarEvents = async (req, res) => {
   try {
-    const from = moment().format('YYYY-MM-DD');
-    const to = moment().add(3, 'months').format('YYYY-MM-DD');
+    let { portfolioId, from, to } = req.query;
+
+    if (!portfolioId) {
+      return res.status(400).json({ error: 'Portfolio ID is required' });
+    }
+
+    const portfolio = await Protfolio.findById(portfolioId);
+    if (!portfolio) {
+      return res.status(404).json({ error: 'Portfolio not found' });
+    }
+
+    const symbolsInPortfolio = portfolio.stocks.map((s) => s.symbol);
+    // console.log(symbolsInPortfolio);
+    if (!from && !to) {
+      from = moment().format('YYYY-MM-DD');
+      to = moment().add(3, 'months').format('YYYY-MM-DD');
+    }
+
+
+    // console.log(from, "dfcdsfc", to);
 
     const [earningsRes, dividendsRes] = await Promise.all([
       axios.get('https://finnhub.io/api/v1/calendar/earnings', {
@@ -1008,11 +1068,17 @@ exports.getCalendarEvents = async (req, res) => {
       })
     ]);
 
-    const earnings = earningsRes.data.earningsCalendar || [];
-    const dividends = dividendsRes.data.dividends || [];
+
+    const earnings = (earningsRes.data.earningsCalendar || []).filter(e =>
+      symbolsInPortfolio.includes(e.symbol)
+    );
+
+    const dividends = (dividendsRes.data.dividends || []).filter(d =>
+      symbolsInPortfolio.includes(d.symbol)
+    );
+    // console.log( earningsRes.data.earningsCalendar);
 
     const formatEvent = (e, type) => ({
-
       symbol: e.symbol,
       type,
       date: e.date || e.exDate
@@ -1020,7 +1086,7 @@ exports.getCalendarEvents = async (req, res) => {
 
     const events = [
       ...earnings.map(e => formatEvent(e, 'Earnings Release')),
-      ...dividends.map(e => formatEvent(e, 'Ex-Dividend Date'))
+      ...dividends.map(d => formatEvent(d, 'Ex-Dividend Date')),
     ];
 
     events.sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -1033,7 +1099,7 @@ exports.getCalendarEvents = async (req, res) => {
 };
 
 
-// Helper to get S&P 500 index change over a period
+
 async function getSNP500Return(period = '1M') {
   try {
     const to = moment().format('YYYY-MM-DD');

@@ -11,7 +11,7 @@ const cloudinary = require("cloudinary").v2;
 //creating news
 exports.createNews = async (req, res) => {
     try {
-        const { symbol,newsTitle, newsDescription, source } = req.body;
+        const { symbol, newsTitle, newsDescription, source } = req.body;
         // const author = req.user._id; 
         const date = new Date();
         const existingNews = await News.findOne({ newsTitle });
@@ -92,12 +92,12 @@ exports.uploadCSV = async (req, res) => {
             .on('data', (data) => {
                 try {
                     results.push({
-                        newsTitle: data.newsTitle ,
-                        newsDescription: data.newsDescription ,
+                        newsTitle: data.newsTitle,
+                        newsDescription: data.newsDescription,
                         date,
                         // author,
-                        symbol: data.symbol ,
-                        source: data.source ,
+                        symbol: data.symbol,
+                        source: data.source,
                     });
                 } catch (parseErr) {
                     // Log or skip malformed row
@@ -127,12 +127,18 @@ exports.getAllNews = async (req, res) => {
         const search = req.query.search || '';              // Search keyword
 
         const skip = (page - 1) * limit;
+        const { symbol } = req.query;
+
+
 
         // Create search filter
         const filter = {
-            newsTitle: { $regex: search, $options: 'i' } ,      // Case-insensitive partial match
-            source : "admin"
+            newsTitle: { $regex: search, $options: 'i' },      // Case-insensitive partial match
+            source: "admin"
         };
+        if (symbol) {
+            filter.symbol = symbol
+        }
 
         // Total count for pagination
         const totalNews = await News.countDocuments(filter);
@@ -202,7 +208,7 @@ exports.getSingleNews = async (req, res) => {
 exports.updateNews = async (req, res) => {
     try {
         const newsId = req.params.id;
-        const { newsTitle, newsDescription,symbol } = req.body;
+        const { newsTitle, newsDescription, symbol } = req.body;
         // const author = req.user._id;
 
         const existingNews = await News.findById(newsId);
@@ -229,9 +235,9 @@ exports.updateNews = async (req, res) => {
         }
 
         // Update the news item
-        if(newsTitle) existingNews.newsTitle = newsTitle;
-        if(newsDescription) existingNews.newsDescription = newsDescription;
-        if(symbol) existingNews.symbol = symbol;
+        if (newsTitle) existingNews.newsTitle = newsTitle;
+        if (newsDescription) existingNews.newsDescription = newsDescription;
+        if (symbol) existingNews.symbol = symbol;
 
         // existingNews.author = author;
         await existingNews.save();
@@ -290,48 +296,48 @@ exports.deleteNews = async (req, res) => {
 
 
 exports.merketNewsFromAPi = async (req, res) => {
-  try {
-    const { symbol, category = "general" } = req.query;
-    let news = [];
+    try {
+        const { symbol, category = "general" } = req.query;
+        let news = [];
 
-    if (symbol) {
-      const to = moment().format("YYYY-MM-DD");
-      const from = moment().subtract(30, "days").format("YYYY-MM-DD");
+        if (symbol) {
+            const to = moment().format("YYYY-MM-DD");
+            const from = moment().subtract(30, "days").format("YYYY-MM-DD");
 
-      const apiResponse = await axios.get(`https://finnhub.io/api/v1/company-news`, {
-        params: {
-          symbol,
-          from,
-          to,
-          token: process.env.FINHUB_API_KEY,
-        },
-      });
+            const apiResponse = await axios.get(`https://finnhub.io/api/v1/company-news`, {
+                params: {
+                    symbol,
+                    from,
+                    to,
+                    token: process.env.FINHUB_API_KEY,
+                },
+            });
 
-      news = apiResponse.data;
-    } else {
-      const apiResponse = await axios.get(`https://finnhub.io/api/v1/news`, {
-        params: {
-          category,
-          token: process.env.FINHUB_API_KEY,
-        },
-      });
+            news = apiResponse.data;
+        } else {
+            const apiResponse = await axios.get(`https://finnhub.io/api/v1/news`, {
+                params: {
+                    category,
+                    token: process.env.FINHUB_API_KEY,
+                },
+            });
 
-      news = apiResponse.data;
+            news = apiResponse.data;
+        }
+
+        return res.status(200).json({
+            status: true,
+            message: "News fetched successfully",
+            data: news,
+        });
+    } catch (error) {
+        console.error("Error fetching news from API:", error);
+        return res.status(500).json({
+            status: false,
+            message: "Error fetching news from API",
+            error: error.message,
+        });
     }
-
-    return res.status(200).json({
-      status: true,
-      message: "News fetched successfully",
-      data: news,
-    });
-  } catch (error) {
-    console.error("Error fetching news from API:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Error fetching news from API",
-      error: error.message,
-    });
-  }
 };
 
 
@@ -362,54 +368,54 @@ exports.deepReSearch = async (req, res) => {
 }
 
 exports.getMultipleCompanyNews = async (req, res) => {
-  try {
-    const { protfolioId } = req.body; // e.g., ["AAPL", "GOOGL"]
-    
-    const portfolio = await Protfolio.findById(protfolioId);
-    // console.log(portfolio)
-    
-    if (!Array.isArray(portfolio.stocks) || portfolio.stocks === 0) {
-      return res.status(400).json({ error: 'symbols array is required in body' });
-    }
+    try {
+        const { protfolioId } = req.body; // e.g., ["AAPL", "GOOGL"]
 
-    const from = moment().subtract(7, 'days').format('YYYY-MM-DD');
-    const to = moment().format('YYYY-MM-DD');
+        const portfolio = await Protfolio.findById(protfolioId);
+        // console.log(portfolio)
 
-    let allNews = [];
-
-    await Promise.all(
-      portfolio.stocks.map(async (stcoks) => {
-        console.log(stcoks)
-        try {
-          const { data } = await axios.get('https://finnhub.io/api/v1/company-news', {
-            params: {
-              symbol: stcoks.symbol.toUpperCase(),
-              from,
-              to,
-              token: process.env.FINHUB_API_KEY
-            }
-          });
-
-          // Add symbol to each article for traceability
-          const taggedNews = data.map(article => ({
-            ...article,
-            symbol: stcoks.symbol.toUpperCase()
-          }));
-
-          allNews = allNews.concat(taggedNews);
-        } catch (err) {
-          console.warn(`Error fetching news for ${symbol}:`, err.message);
+        if (!Array.isArray(portfolio.stocks) || portfolio.stocks === 0) {
+            return res.status(400).json({ error: 'symbols array is required in body' });
         }
-      })
-    );
 
-    // Sort all news by datetime descending and take the most recent 30
-    allNews.sort((a, b) => b.datetime - a.datetime);
-    const recentNews = allNews.slice(0, 30);
+        const from = moment().subtract(7, 'days').format('YYYY-MM-DD');
+        const to = moment().format('YYYY-MM-DD');
 
-    res.json(recentNews);
-  } catch (err) {
-    console.error('Multi-symbol news fetch error:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
-  }
+        let allNews = [];
+
+        await Promise.all(
+            portfolio.stocks.map(async (stcoks) => {
+                console.log(stcoks)
+                try {
+                    const { data } = await axios.get('https://finnhub.io/api/v1/company-news', {
+                        params: {
+                            symbol: stcoks.symbol.toUpperCase(),
+                            from,
+                            to,
+                            token: process.env.FINHUB_API_KEY
+                        }
+                    });
+
+                    // Add symbol to each article for traceability
+                    const taggedNews = data.map(article => ({
+                        ...article,
+                        symbol: stcoks.symbol.toUpperCase()
+                    }));
+
+                    allNews = allNews.concat(taggedNews);
+                } catch (err) {
+                    console.warn(`Error fetching news for ${symbol}:`, err.message);
+                }
+            })
+        );
+
+        // Sort all news by datetime descending and take the most recent 30
+        allNews.sort((a, b) => b.datetime - a.datetime);
+        const recentNews = allNews.slice(0, 30);
+
+        res.json(recentNews);
+    } catch (err) {
+        console.error('Multi-symbol news fetch error:', err.message);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 };
