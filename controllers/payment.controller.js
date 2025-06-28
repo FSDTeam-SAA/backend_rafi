@@ -1,51 +1,87 @@
-const { PaymentInfo } = require("../models/payment.model")
+const Stripe = require('stripe')
+const User = require('../models/user.model') 
+const paymentInfo = require('../models/payment.model.js')
 
-const {
-  generateClientToken,
-  processTransaction,
-} = require('../services/braintree.service')
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2022-11-15',
+})
 
-// getClientToken
-exports.getClientToken = async (_req, res) => {
-  try {
-    const { clientToken } = await generateClientToken()
-    res.status(200).json({ clientToken })
-  } catch (err) {
-    res.status(500).json({ message: 'Failed to generate token', error: err })
+exports.createPayment = async (req, res) => {
+  const { userId, price, subscriptionId } = req.body
+
+  if (!userId || !price ) {
+    return res.status(400).json({
+      error: 'userId, and amount are required.',
+    })
   }
-}
 
-// processTransaction
-exports.makePayment = async (req, res) => {
   try {
-    const { amount, paymentMethodNonce, userId, subscriptionId } = req.body
-
-    const result = await processTransaction(amount, paymentMethodNonce)
-
-    if (result.success) {
-      const newPayment = await PaymentInfo.create({
+    // Create a PaymentIntent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: Math.round(price * 100), // Stripe expects the amount in cents
+      currency: 'usd',
+      metadata: {
         userId,
         subscriptionId,
-        price: amount,
-        paymentStatus: 'complete',
-        transactionId: result.transaction.id,
-        paymentMethodNonce,
-        paymentMethod: result.transaction.paymentInstrumentType,
-      })
+      },
+    })
 
-      res.status(200).json({
-        message: 'Payment successful',
-        transactionId: result.transaction.id,
-        payment: newPayment,
-      })
-      return
-    } else {
-      res.status(400).json({
-        message: 'Payment failed',
-        error: result.message,
-      })
-    }
-  } catch (err) {
-    res.status(500).json({ message: 'Internal Server Error', error: err })
+    // Save payment record with status 'pending'
+    const PaymentInfo = new paymentInfo({
+      userId,
+      subscriptionId,
+      price,
+      transactionId: paymentIntent.id,
+      paymentStatus: 'pending',
+    })
+    await PaymentInfo.save()
+
+    res.status(200).json({
+      success: true,
+      clientSecret: paymentIntent.client_secret,
+      message: 'PaymentIntent created.',
+    })
+  } catch (error) {
+    console.error('Error creating PaymentIntent:', error)
+    res.status(500).json({
+      error: 'Internal server error.',
+    })
   }
 }
+
+exports.confirmPayment = async (req, res) => {
+  const { paymentIntentId } = req.body
+
+  if (!paymentIntentId) {
+    return res.status(400).json({ error: 'paymentIntentId is required.' })
+  }
+
+  try {
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId)
+
+    if (paymentIntent.status !== 'succeeded') {
+      await paymentInfo.findOneAndUpdate(
+        { transactionId: paymentIntentId },
+        { paymentStatus: 'failed' }
+      )
+
+      return res.status(400).json({ error: 'Payment was not successful.' })
+    }
+
+    const paymentRecord = await paymentInfo.findOneAndUpdate(
+      { transactionId: paymentIntentId },
+      { paymentStatus: 'complete' },
+      { new: true }
+    )
+
+    return res.status(200).json({
+      success: true,
+      message: 'Payment processed and transferred.',
+      paymentIntent,
+    })
+  } catch (error) {
+    console.error('Error confirming or transferring payment:', error)
+    res.status(500).json({ error: 'Internal server error.' })
+  }
+}
+

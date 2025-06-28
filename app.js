@@ -28,7 +28,7 @@ const newsRouter = require("./routes/news.route");
 const blogRouter = require("./routes/blog.route");
 const influencerRouter = require("./routes/influencer.route");
 const stocksAdminRouter = require("./routes/stocks.route");
-const paymentRouter = require("./routes/payments.route")
+const paymentRouter = require("./routes/payment.route");
 const subscriptionRouter = require("./routes/subscriptionPlan.route");
 
 const portfolioRoutes = require("./routes/protfolio.route");
