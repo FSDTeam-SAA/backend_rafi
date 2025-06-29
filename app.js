@@ -132,10 +132,9 @@ const fetchOpenPrice = async (symbol) => {
     const profile = {
       pc: data.pc,
       // logo: data2.logo,
-      name: data2.result[0].description,
+      name: data2?.result[0]?.description,
     }
     // console.log( data)
-    // console.log(data2)
     if (data && data.pc) {
       openPrices.set(symbol, profile);
     }
@@ -145,7 +144,7 @@ const fetchOpenPrice = async (symbol) => {
         change: data.d,
         percent: data.dp,
         // logo: data2.logo,
-        name: data2.name
+        name: data2.result[0].description,
 
     })
   } catch (err) {
@@ -217,7 +216,7 @@ if (parsed.type === 'news') {
 io.on('connection', async (socket) => {
   console.log('User connected:', socket.id);
 
-  const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT', '^VIX', 'XAU']; // Add your stock symbols here
+  const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT']; // Add your stock symbols here
 
   // Fetch opening prices once at connection
   for (const symbol of symbols) {
