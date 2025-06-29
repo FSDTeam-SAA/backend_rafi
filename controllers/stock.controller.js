@@ -819,7 +819,8 @@ exports.getOliveStockOverview = async (req, res) => {
       valuation: currentPrice <= olive?.fair_value ? 'green' : 'gray'
     };
 
-    const shariaCompliant = true; // Placeholder (add screening logic/API)
+    const shariaCompliant = olive?.ComplianceStatus === "Compliant" ? true : false; // Placeholder (add screening logic/API)
+    const reason = olive?.QuantitativeReason
 
     //     // === Zoya Shariah Screening ===
     // const { data: zoya } = await axios.get(`https://api.zoya.finance/v1/shariah-screening`, {
@@ -836,6 +837,7 @@ exports.getOliveStockOverview = async (req, res) => {
       quadrant,
       olives,
       shariaCompliant,
+      reason: reason,
       valuationBar: {
         percent: valuationDiff.toFixed(2),
         color: valuationColor,
