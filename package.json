@@ -27,6 +27,7 @@
     "nodemailer": "^7.0.3",
     "quick-response": "^1.0.5",
     "socket.io": "^4.8.1",
+    "stripe": "^18.2.1",
     "ws": "^8.18.2"
   },
   "devDependencies": {
