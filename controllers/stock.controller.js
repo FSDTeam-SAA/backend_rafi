@@ -957,91 +957,93 @@ exports.getStockOfTheMonth = async (req, res) => {
     const enrichedStocks = await Promise.all(
       stocks.map(async (stock) => {
         try {
-        // Fetch data in parallel
-        const [profileRes, recRes, ptRes, candleRes] = await Promise.all([
-          axios.get('https://finnhub.io/api/v1/stock/profile2', {
-            params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
-          }),
-          axios.get('https://finnhub.io/api/v1/stock/recommendation', {
-            params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
-          }),
-          axios.get('https://finnhub.io/api/v1/stock/price-target', {
-            params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
-          }),
-          axios.get('https://finnhub.io/api/v1/stock/candle', {
-            params: {
-              symbol: stock.symbol,
-              resolution: 'D',
-              from: Math.floor(oneMonthAgo.valueOf() / 1000),
-              to: Math.floor(now.valueOf() / 1000),
-              token: process.env.FINHUB_API_KEY,
+          // Fetch data in parallel
+          const [profileRes, recRes, ptRes, candleRes] = await Promise.all([
+            axios.get('https://finnhub.io/api/v1/stock/profile2', {
+              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
+            }),
+            axios.get('https://finnhub.io/api/v1/stock/recommendation', {
+              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
+            }),
+            axios.get('https://finnhub.io/api/v1/stock/price-target', {
+              params: { symbol: stock.symbol, token: process.env.FINHUB_API_KEY },
+            }),
+            axios.get('https://finnhub.io/api/v1/stock/candle', {
+              params: {
+                symbol: stock.symbol,
+                resolution: 'D',
+                from: Math.floor(oneMonthAgo.valueOf() / 1000),
+                to: Math.floor(now.valueOf() / 1000),
+                token: process.env.FINHUB_API_KEY,
+              },
+            }),
+          ]);
+          // console.log( profileRes)
+
+          const profile = profileRes.data;
+          const recommendation = recRes.data[0] || {};
+          const priceTarget = ptRes.data || {};
+          const candles = candleRes.data;
+
+          // Calculate 1-month return
+          const closes = candles?.c || [];
+          const oneMonthReturn = (closes.length >= 2)
+            ? (((closes[closes.length - 1] - closes[0]) / closes[0]) * 100).toFixed(2)
+            : '0.00';
+
+          // Olive logic
+          const olive = await Olive.findOne({ symbol: stock.symbol });
+          let quadrant = 'Yellow';
+          let valuationColor = 'yellow';
+
+          const quotePrice = closes[closes.length - 1] || 0;
+          const fairValue = olive?.fair_value || quotePrice;
+
+          if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
+          else if (olive?.financial_health === "good") quadrant = 'Lime Green';
+          else if (olive?.compatitive_advantage === "good") quadrant = 'Orange';
+
+          const valuationDiff = ((quotePrice - fairValue) / fairValue) * 100;
+          if (valuationDiff < -10) valuationColor = 'green';
+          else if (valuationDiff > 10) valuationColor = 'red';
+
+          const olives = {
+            financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+            competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+            valuation: quotePrice <= fairValue * 1.1 ? 'green' : 'gray',
+          };
+
+          return {
+            symbol: stock.symbol,
+            companyName: profile.name || '',
+            logo: profile.logo || '',
+            sector: profile.finnhubIndustry || 'N/A',
+            marketCap: profile.marketCapitalization
+              ? `$${Number(profile.marketCapitalization).toLocaleString()}`
+              : '$0',
+            oneMonthReturn: `${oneMonthReturn}%`,
+            stockRating: recommendation.rating || 'N/A',
+            analystTarget: `$${priceTarget.targetMean?.toFixed(2) || '0.00'} (${priceTarget.targetPercent?.toFixed(2) || '0.00'}%)`,
+            ratingTrend: {
+              buy: recommendation.buy || 0,
+              hold: recommendation.hold || 0,
+              sell: recommendation.sell || 0,
             },
-          }),
-        ]);
-        // console.log( profileRes)
-
-        const profile = profileRes.data;
-        const recommendation = recRes.data[0] || {};
-        const priceTarget = ptRes.data || {};
-        const candles = candleRes.data;
-
-        // Calculate 1-month return
-        const closes = candles?.c || [];
-        const oneMonthReturn = (closes.length >= 2)
-          ? (((closes[closes.length - 1] - closes[0]) / closes[0]) * 100).toFixed(2)
-          : '0.00';
-
-        // Olive logic
-        const olive = await Olive.findOne({ symbol: stock.symbol });
-        let quadrant = 'Yellow';
-        let valuationColor = 'yellow';
-
-        const quotePrice = closes[closes.length - 1] || 0;
-        const fairValue = olive?.fair_value || quotePrice;
-
-        if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
-        else if (olive?.financial_health === "good") quadrant = 'Lime Green';
-        else if (olive?.compatitive_advantage === "good") quadrant = 'Orange';
-
-        const valuationDiff = ((quotePrice - fairValue) / fairValue) * 100;
-        if (valuationDiff < -10) valuationColor = 'green';
-        else if (valuationDiff > 10) valuationColor = 'red';
-
-        const olives = {
-          financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
-          competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
-          valuation: quotePrice <= fairValue * 1.1 ? 'green' : 'gray',
-        };
-
-        return {
-          symbol: stock.symbol,
-          companyName: profile.name || '',
-          logo: profile.logo || '',
-          sector: profile.finnhubIndustry || 'N/A',
-          marketCap: profile.marketCapitalization
-            ? `$${Number(profile.marketCapitalization).toLocaleString()}`
-            : '$0',
-          oneMonthReturn: `${oneMonthReturn}%`,
-          stockRating: recommendation.rating || 'N/A',
-          analystTarget: `$${priceTarget.targetMean?.toFixed(2) || '0.00'} (${priceTarget.targetPercent?.toFixed(2) || '0.00'}%)`,
-          ratingTrend: {
-            buy: recommendation.buy || 0,
-            hold: recommendation.hold || 0,
-            sell: recommendation.sell || 0,
-          },
-          quadrant,
-          valuationColor,
-          olives,
-          month: monthName,
-        };
-      } catch (err) {
-        console.warn(`Failed to fetch data for`, err.message);
-        return null;
-      }
+            quadrant,
+            valuationColor,
+            olives,
+            month: monthName,
+          };
+        } catch (err) {
+          console.warn(`Failed to fetch data for`, err.message, " ", stock.symbol);
+          return null;
+        }
       })
     );
 
-    res.json({ stockOfTheMonth: enrichedStocks });
+    const filteredStocks = enrichedStocks.filter(stock => stock !== null && stock !== undefined);
+
+    res.json({ stockOfTheMonth: filteredStocks });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch stocks of the month' });
@@ -1220,11 +1222,11 @@ exports.getQualityStocks = async (req, res) => {
 
 
 
-exports.oliveStcoksProfolio = async(req,res)=>{
+exports.oliveStcoksProfolio = async (req, res) => {
   try {
     const docs = await qualityStocks.findOne({ type: 'protfolio' });
 
-        const now = moment();
+    const now = moment();
     const oneMonthAgo = moment().subtract(30, 'days');
 
     const results = await Promise.all(docs.stocks.map(async (stockEntry) => {
@@ -1488,15 +1490,15 @@ exports.getOptionsChain = async (req, res) => {
     );
 
     const expirations = expiryData.data?.map((item) => item.expirationDate);
-    console.log( expirations );
+    console.log(expirations);
     if (!Array.isArray(expiryData.data) || !expiryData.data.length) {
       return res.status(404).json({ error: "No option data available" });
     }
 
     // Collect formatted output for each expiration
     const optionsByExpiry = await Promise.all(
-      expiryData.data.slice(0,10).map(async (exp) => {
-        console.log( exp );
+      expiryData.data.slice(0, 10).map(async (exp) => {
+        console.log(exp);
         // const { expirationDate } = exp;
 
         // // Fetch full chain data for each expiry
@@ -1509,7 +1511,7 @@ exports.getOptionsChain = async (req, res) => {
         console
 
         const calls = exp.options.CALL;
-        const puts =exp.options.PUT;
+        const puts = exp.options.PUT;
 
         return {
           expirationDate: exp.expirationDate,
