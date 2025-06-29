@@ -125,15 +125,17 @@ const fetchOpenPrice = async (symbol) => {
     const { data } = await axios.get(`https://finnhub.io/api/v1/quote`, {
       params: { symbol, token: FINNHUB_TOKEN }
     });
-        const { data:data2 } = await axios.get(`https://finnhub.io/api/v1/stock/profile2`, {
-      params: { symbol, token: FINNHUB_TOKEN }
+        const { data:data2 } = await axios.get(`https://finnhub.io/api/v1/search`, {
+      params: { q:symbol, token: FINNHUB_TOKEN }
     });
     // console.log(data, symbol)
     const profile = {
       pc: data.pc,
-      logo: data2.logo,
-      name: data2.name,
+      // logo: data2.logo,
+      name: data2.result[0].description,
     }
+    // console.log( data)
+    // console.log(data2)
     if (data && data.pc) {
       openPrices.set(symbol, profile);
     }
@@ -142,7 +144,7 @@ const fetchOpenPrice = async (symbol) => {
         currentPrice : data.c,
         change: data.d,
         percent: data.dp,
-        logo: data2.logo,
+        // logo: data2.logo,
         name: data2.name
 
     })
@@ -215,10 +217,11 @@ if (parsed.type === 'news') {
 io.on('connection', async (socket) => {
   console.log('User connected:', socket.id);
 
-  const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT','^VIX','GC=F']; // Add your stock symbols here
+  const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT', '^VIX', 'XAU']; // Add your stock symbols here
 
   // Fetch opening prices once at connection
   for (const symbol of symbols) {
+    console.log(symbol)
     await fetchOpenPrice(symbol);
     subscribeSymbol(symbol);
   }
