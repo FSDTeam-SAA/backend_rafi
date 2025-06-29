@@ -490,7 +490,7 @@ exports.getPortfolioOverview = async (req, res) => {
             unrealized: currentValue.toFixed(2) - (avgBuyPrice * netQuantity),
             pL: ((currentValue.toFixed(2) - (avgBuyPrice * netQuantity)) / (avgBuyPrice * netQuantity)) * 100,
             olives,
-            quadrant,
+            quadrant: olive?.fair_value,
             oneMonthReturn
           };
         } catch (err) {

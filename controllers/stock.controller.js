@@ -113,6 +113,7 @@ exports.stocksSummary = async (req, res) => {
         else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
         else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
         else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
+        console.log("dsfds" ,quadrant)
 
         // Valuation analysis
         let valuationColor = 'yellow';
@@ -802,7 +803,7 @@ exports.getOliveStockOverview = async (req, res) => {
     if (olive?.financial_health === "good" && olive?.compatitive_advantage === "good") quadrant = 'Olive Green';
     else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
     else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
-    else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bd") quadrant = 'Yellow';
+    else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
 
     // Valuation bar
     const valuationDiff = ((currentPrice - olive?.fair_value) / olive?.fair_value) * 100;
