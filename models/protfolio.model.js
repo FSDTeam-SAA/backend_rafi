@@ -37,6 +37,9 @@ const protfolioSchema = new mongoose.Schema(
           quantity: {
             type: Number,
           },
+          date: {
+            type: Date,
+            },
         }]
 
       }

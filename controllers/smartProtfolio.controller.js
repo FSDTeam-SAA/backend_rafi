@@ -420,7 +420,7 @@ exports.getPortfolioOverview = async (req, res) => {
           const avgBuyPrice = totalCost / netQuantity;
 
 
-          const [companyProfile, quote, candleData, olive] = await Promise.all([
+          const [companyProfile, quote, candleData, olive, priceTarget] = await Promise.all([
             new Promise((resolve) =>
               finnhubClient.companyProfile2({ symbol: holding.symbol }, (err, data) =>
                 resolve(err ? {} : data)
@@ -440,7 +440,12 @@ exports.getPortfolioOverview = async (req, res) => {
                 (err, data) => resolve(err || data.s !== 'ok' ? {} : data)
               )
             ),
-            Olive.findOne({ symbol: holding.symbol }).exec()
+            Olive.findOne({ symbol: holding.symbol }).exec(),
+            new Promise((resolve) =>
+              finnhubClient.priceTarget(holding.symbol, (err, data) =>
+                resolve(err ? {} : data)
+              )
+            ),
           ]);
 
           const quadrant = olive
@@ -491,7 +496,12 @@ exports.getPortfolioOverview = async (req, res) => {
             pL: ((currentValue.toFixed(2) - (avgBuyPrice * netQuantity)) / (avgBuyPrice * netQuantity)) * 100,
             olives,
             quadrant: olive?.fair_value,
-            oneMonthReturn
+            oneMonthReturn,
+            priceTarget: {
+              high: priceTarget.targetHigh || null,
+              low: priceTarget.targetLow || null,
+              mean: priceTarget.targetMean || null
+            }
           };
         } catch (err) {
           console.warn(`Skipping ${holding.symbol}:`, err.message);
@@ -946,7 +956,7 @@ exports.getProtfolioById = async (req, res) => {
 // };
 
 exports.addStockProtfolio = async (req, res) => {
-  const { portfolioId, symbol, quantity, price, symbols, event } = req.body;
+  const { portfolioId, symbol, quantity, price, symbols, event, date } = req.body;
 
   const portfolio = await Protfolio.findById(portfolioId);
   if (!portfolio) {
@@ -961,6 +971,7 @@ exports.addStockProtfolio = async (req, res) => {
         event: event,
         quantity: quantity,
         price: sym.price,
+        date: date
       };
 
       if (!exists) {
