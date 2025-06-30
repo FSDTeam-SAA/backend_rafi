@@ -1662,11 +1662,12 @@ const getStockMeta = async (symbol) => {
             ? 'Orange'
             : 'Yellow'
       : 'Unknown';
+      // console.log( quote.c)
 
     const olives = {
       financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
       competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
-      valuation: quote.c <= olive?.fair_value ? 'green' : 'gray',
+      valuation: quote.data.c <= olive?.fair_value ? 'green' : 'gray',
     };
     const priceTarget = ptRes.data || {};
 

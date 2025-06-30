@@ -1289,7 +1289,7 @@ exports.oliveStcoksProfolio = async (req, res) => {
         const olives = {
           financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
           competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
-          valuation: quotePrice <= fairValue * 1.1 ? 'green' : 'gray',
+          valuation: quotePrice <= fairValue  ? 'green' : 'gray',
         };
 
         return {
