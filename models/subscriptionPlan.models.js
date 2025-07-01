@@ -6,10 +6,15 @@ const featureSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    type: [
-      {
+    type: [{
+      name: {
         type: String,
       },
+      active:{
+        type:Boolean,
+      }
+    }
+
     ],
   },
   { _id: false }
@@ -25,7 +30,11 @@ const subscriptionPlanSchema = new mongoose.Schema(
       type: String,
       default: '',
     },
-    price: {
+    monthly_price: {
+      type: Number,
+      required: [true, 'Price is required'],
+    },
+    yearly_price: {
       type: Number,
       required: [true, 'Price is required'],
     },
