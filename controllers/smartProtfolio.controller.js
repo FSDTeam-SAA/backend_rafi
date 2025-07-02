@@ -1519,15 +1519,16 @@ exports.getPortfolioDashboard = async (req, res) => {
           });
         }
 
-        const monthlyGainSummary = Object.entries(monthlyGains).map(([month, { buy, sell }]) => {
-          const gain = sell - buy;
-          const gainPct = buy > 0 ? ((gain / buy) * 100).toFixed(2) : '0.00';
-          return {
-            month,
-            gain: Number(gain.toFixed(2)),
-            gainPercent: gainPct + '%',
-          };
+        let totalBuy = 0;
+        let totalSell = 0;
+
+        Object.values(monthlyGains).forEach(({ buy, sell }) => {
+          totalBuy += buy;
+          totalSell += sell;
         });
+
+        const netGain = totalSell - totalBuy;
+        const gainPercent = totalBuy > 0 ? ((netGain / totalBuy) * 100).toFixed(2) : '0.00';
 
         return {
           symbol: s.symbol,
@@ -1541,7 +1542,7 @@ exports.getPortfolioDashboard = async (req, res) => {
           transactions: s.transection?.length || 1,
           lastTransaction: s.transection?.slice(-1)[0]?.event || 'Open',
           date: moment(s.addedAt || portfolio.createdAt).format('ll'),
-          monthlyGains: monthlyGainSummary
+          monthlyGains: gainPercent
         };
       })
     );
