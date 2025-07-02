@@ -25,14 +25,14 @@ const registration = async (req, res) => {
 
     const userFound = await User.findOne({ $or: [{ email }, { userName }] })
     if (userFound) {
-      return res.status(400).json(apiResponse(400, 'user already exists'))
+      return res.status(400).json(apiResponse(400, `user already exists on this email ${email}`))
     }
 
     const user = await User.create({ userName, email, password,phoneNumber })
 
     return res
       .status(201)
-      .json(apiResponse(201, 'user registration successfull', user))
+      .json(apiResponse(201, `user registration successfull with the email ${email}`, user))
   } catch (error) {
     return res.json(apiResponse(500, 'server error', error.message))
   }
@@ -105,7 +105,7 @@ const forgotPassword = async (req, res) => {
     const { email } = req.body
     const user = await User.findOne({ email })
     if (!user) {
-      res.status(400).json({ success: false, message: 'User not found!' })
+      res.status(400).json({ success: false, message: `User not associated with this email ${email}` })
       return
     }
 
@@ -199,7 +199,7 @@ const forgotPassword = async (req, res) => {
 
     res
       .status(200)
-      .json({ success: true, message: 'OTP Is Send' })
+      .json({ success: true, message: `OTP Is Send in your email ${email}` })
   } catch (error) {
     res.status(500).json({
       success: false,

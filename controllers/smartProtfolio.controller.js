@@ -394,6 +394,8 @@ exports.getPortfolioOverview = async (req, res) => {
     const thirtyDaysAgo = moment().subtract(30, 'days').unix();
 
     let totalValue = 0, dailyChange = 0, startValue = 0;
+    let totalInvested = 0;
+    let totalRealizedEarnings = 0;
 
     const detailed = await Promise.all(
       portfolio.stocks.map(async (holding) => {
@@ -403,16 +405,29 @@ exports.getPortfolioOverview = async (req, res) => {
           let netQuantity = 0;
           let totalCost = 0;
 
+          // holding.transection.forEach(tx => {
+          //   console.log(tx.event)
+          //   if (tx.event === 'buy') {
+          //     netQuantity += tx.quantity;
+          //     totalCost += tx.price * tx.quantity;
+          //   } else if (tx.event === 'sell') {
+          //     netQuantity -= tx.quantity;
+          //     // Optional: remove from cost basis if you want weighted average
+          //   }
+          // });
+
           holding.transection.forEach(tx => {
-            console.log(tx.event)
             if (tx.event === 'buy') {
               netQuantity += tx.quantity;
               totalCost += tx.price * tx.quantity;
+              totalInvested += tx.price * tx.quantity; // track total invested
             } else if (tx.event === 'sell') {
               netQuantity -= tx.quantity;
-              // Optional: remove from cost basis if you want weighted average
+              totalRealizedEarnings += tx.price * tx.quantity; // track realized earnings
             }
           });
+
+
           // console.log( netQuantity );
 
           if (netQuantity <= 0) return null; // skip fully sold stocks
@@ -514,6 +529,10 @@ exports.getPortfolioOverview = async (req, res) => {
     const cash = portfolio.cash || 0;
     const monthlyReturn =
       startValue > 0 ? (((totalValue - startValue) / startValue) * 100).toFixed(2) : '0.00';
+    const unrealizedGains = totalValue - (totalInvested - totalRealizedEarnings);
+    const overallReturn = totalInvested > 0
+      ? ((totalRealizedEarnings + unrealizedGains) / totalInvested) * 100
+      : 0;
 
     res.status(200).json({
       totalHoldings: totalValue.toFixed(2),
@@ -522,7 +541,9 @@ exports.getPortfolioOverview = async (req, res) => {
       dailyReturn: dailyChange.toFixed(2),
       dailyReturnPercent: ((dailyChange / totalValue) * 100).toFixed(2),
       monthlyReturnPercent: monthlyReturn,
-      holdings: filteredHoldings
+      holdings: filteredHoldings,
+      unrealizedGains: unrealizedGains.toFixed(2),
+      overallReturnPercent: overallReturn.toFixed(2),
     });
   } catch (err) {
     console.error("Portfolio overview error:", err);
@@ -1482,6 +1503,32 @@ exports.getPortfolioDashboard = async (req, res) => {
         const stockVal = s.price * s.quantity;
         const portfolioPercentage = totalValue > 0 ? ((stockVal / totalValue) * 100).toFixed(2) : '0.00';
 
+        const monthlyGains = {};
+
+        if (s.transection && s.transection.length) {
+          s.transection.forEach((t) => {
+            const monthKey = moment(t.date).format('MMM YYYY');
+            if (!monthlyGains[monthKey]) {
+              monthlyGains[monthKey] = { buy: 0, sell: 0 };
+            }
+            if (t.event === 'buy') {
+              monthlyGains[monthKey].buy += t.price * t.quantity;
+            } else if (t.event === 'sell') {
+              monthlyGains[monthKey].sell += t.price * t.quantity;
+            }
+          });
+        }
+
+        const monthlyGainSummary = Object.entries(monthlyGains).map(([month, { buy, sell }]) => {
+          const gain = sell - buy;
+          const gainPct = buy > 0 ? ((gain / buy) * 100).toFixed(2) : '0.00';
+          return {
+            month,
+            gain: Number(gain.toFixed(2)),
+            gainPercent: gainPct + '%',
+          };
+        });
+
         return {
           symbol: s.symbol,
           companyName: profile.name,
@@ -1491,9 +1538,10 @@ exports.getPortfolioDashboard = async (req, res) => {
           quantity: s.quantity,
           holdingValue: stockVal.toFixed(2),
           portfolioPercentage: `${portfolioPercentage}%`,
-          transactions: 1,
-          lastTransaction: 'Open',
+          transactions: s.transection?.length || 1,
+          lastTransaction: s.transection?.slice(-1)[0]?.event || 'Open',
           date: moment(s.addedAt || portfolio.createdAt).format('ll'),
+          monthlyGains: monthlyGainSummary
         };
       })
     );
@@ -1662,7 +1710,7 @@ const getStockMeta = async (symbol) => {
             ? 'Orange'
             : 'Yellow'
       : 'Unknown';
-      // console.log( quote.c)
+    // console.log( quote.c)
 
     const olives = {
       financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
