@@ -987,24 +987,26 @@ exports.addStockProtfolio = async (req, res) => {
   if (symbols && Array.isArray(symbols) && symbols.length > 0) {
     // Batch add mode
     symbols.forEach((sym) => {
+      console.log( sym)
       const exists = portfolio.stocks.find((s) => s.symbol === sym.symbol);
       const transactionEntry = {
-        event: event,
-        quantity: quantity,
+        event: sym.event,
+        quantity: sym.quantity,
         price: sym.price,
-        date: date
+        date: sym.date
       };
+      console.log("ffddf")
 
       if (!exists) {
         portfolio.stocks.push({
           symbol: sym.symbol,
-          quantity: quantity,
+          quantity: sym.quantity,
           price: sym.price,
           transection: [transactionEntry],
         });
       } else {
-        exists.quantity += 1;
-        exists.price = sym.price;
+        exists.quantity ? exists.quantity += sym.quantity : exists.quantity = sym.quantity;
+        // exists.price = sym.price;
         exists.transection.push(transactionEntry);
       }
     });
@@ -1025,6 +1027,7 @@ exports.addStockProtfolio = async (req, res) => {
     event: event,
     quantity,
     price,
+    date
   };
 
   if (stock) {
