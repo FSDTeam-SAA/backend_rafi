@@ -430,7 +430,7 @@ exports.getPortfolioOverview = async (req, res) => {
 
           // console.log( netQuantity );
 
-          if (netQuantity <= 0) return null; // skip fully sold stocks
+          // if (netQuantity <= 0) return null; // skip fully sold stocks
 
           const avgBuyPrice = totalCost / netQuantity;
 
