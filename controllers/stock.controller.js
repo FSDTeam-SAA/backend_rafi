@@ -113,7 +113,7 @@ exports.stocksSummary = async (req, res) => {
         else if (olive?.financial_health === "good" && olive?.compatitive_advantage === "bad") quadrant = 'Lime Green';
         else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "good") quadrant = 'Orange';
         else if (olive?.financial_health === "bad" && olive?.compatitive_advantage === "bad") quadrant = 'Yellow';
-        console.log("dsfds" ,quadrant)
+        // console.log("dsfds" ,quadrant)
 
         // Valuation analysis
         let valuationColor = 'yellow';
@@ -202,7 +202,7 @@ exports.searchStocks = async (req, res) => {
     const topMatches = searchResults.result
       .filter(item => item.type === "Common Stock" || item.type === "Equity")
       .slice(0, 5); // Top 5 results
-    console.log(topMatches);
+    // console.log(topMatches);
 
     const enrichedResults = await Promise.all(
       topMatches.map(async (item) => {
@@ -212,7 +212,7 @@ exports.searchStocks = async (req, res) => {
               err ? reject(err) : resolve(data)
             )
           );
-          console.log(companyProfile);
+          // console.log(companyProfile);
 
           const quote = await new Promise((resolve, reject) =>
             finnhubClient.quote(item.symbol, (err, data) =>
@@ -271,7 +271,7 @@ exports.getStockOverview = async (req, res) => {
     const companyProfile = await new Promise((resolve, reject) =>
       finnhubClient.companyProfile2({ symbol }, (err, data) => err ? reject(err) : resolve(data))
     );
-    console.log(companyProfile)
+    // console.log(companyProfile)
 
     // 2. Quote
     const quote = await new Promise((resolve, reject) =>
@@ -810,7 +810,7 @@ exports.getOliveStockOverview = async (req, res) => {
     let valuationColor = 'yellow';
     if (valuationDiff < -10) valuationColor = 'green';
     else if (valuationDiff > 10) valuationColor = 'red';
-    console.log(currentPrice)
+    // console.log(currentPrice)
 
     // Olive logic
     const olives = {
@@ -1493,7 +1493,7 @@ exports.getOptionsChain = async (req, res) => {
     );
 
     const expirations = expiryData.data?.map((item) => item.expirationDate);
-    console.log(expirations);
+    // console.log(expirations);
     if (!Array.isArray(expiryData.data) || !expiryData.data.length) {
       return res.status(404).json({ error: "No option data available" });
     }
@@ -1501,7 +1501,7 @@ exports.getOptionsChain = async (req, res) => {
     // Collect formatted output for each expiration
     const optionsByExpiry = await Promise.all(
       expiryData.data.slice(0, 10).map(async (exp) => {
-        console.log(exp);
+        // console.log(exp);
         // const { expirationDate } = exp;
 
         // // Fetch full chain data for each expiry

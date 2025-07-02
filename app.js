@@ -156,7 +156,7 @@ const fetchOpenPrice = async (symbol) => {
 // WebSocket message from Finnhub
 finnhubSocket.on('message', async (data) => {
   const parsed = JSON.parse(data);
-  console.log(parsed)
+  // console.log(parsed)
   if (parsed.type === 'trade') {
     parsed.data.forEach((trade) => {
       const symbol = trade.s;
@@ -181,7 +181,7 @@ finnhubSocket.on('message', async (data) => {
   }
 if (parsed.type === 'news') {
   const newsArray = Array.isArray(parsed.data) ? parsed.data : [parsed.data]; // normalize to array
-  console.log("news", newsArray)
+  // console.log("news", newsArray)
 
 
   // Loop over each news item and notify users

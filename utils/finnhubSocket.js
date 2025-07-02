@@ -10,7 +10,7 @@ function sendSubscribeMessage(symbol) {
     finnhubSocket.send(JSON.stringify({ type: 'subscribe-news', symbol }));
   } else {
     finnhubSocket.on('open', () => {
-        console.log(symbol)
+        // console.log(symbol)
       finnhubSocket.send(JSON.stringify({ type: 'subscribe-news', symbol }));
     });
   }
