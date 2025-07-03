@@ -987,7 +987,7 @@ exports.addStockProtfolio = async (req, res) => {
   if (symbols && Array.isArray(symbols) && symbols.length > 0) {
     // Batch add mode
     symbols.forEach((sym) => {
-      console.log( sym)
+      // console.log( sym)
       const exists = portfolio.stocks.find((s) => s.symbol === sym.symbol);
       const transactionEntry = {
         event: sym.event,
@@ -995,7 +995,7 @@ exports.addStockProtfolio = async (req, res) => {
         price: sym.price,
         date: sym.date
       };
-      console.log("ffddf")
+      // console.log("ffddf")
 
       if (!exists) {
         portfolio.stocks.push({
@@ -1734,10 +1734,11 @@ const getStockMeta = async (symbol) => {
       analystTarget: `$${priceTarget.targetMean?.toFixed(2) || '0.00'} (${priceTarget.targetPercent?.toFixed(2) || '0.00'}%)`,
       olives,
       ratingTrend: {
-        buy: recommendation.buy || 0,
-        hold: recommendation.hold || 0,
-        sell: recommendation.sell || 0,
+        buy: recommendation.data[0].buy || 0,
+        hold: recommendation.data[0].hold || 0,
+        sell: recommendation.data[0].sell || 0,
       },
+      // lastRatingDate:
     };
     return data;
   } catch (err) {
