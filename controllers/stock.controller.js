@@ -449,17 +449,124 @@ exports.getStockScreenerByCountry = async (req, res) => {
 
 
 
+// exports.getStockTargetPrice = async (req, res) => {
+//   try {
+//     const { symbol } = req.query;
+//     const { data } = await axios.get(`https://finnhub.io/api/v1/stock/price-target`, {
+//       params: { symbol, token: FINNHUB_API_KEY }
+//     });
+//     res.json(data);
+//   } catch (err) {
+//     res.status(500).json({ error: 'Error fetching target price' });
+//   }
+// };
+
+
+
 exports.getStockTargetPrice = async (req, res) => {
   try {
     const { symbol } = req.query;
-    const { data } = await axios.get(`https://finnhub.io/api/v1/stock/price-target`, {
-      params: { symbol, token: FINNHUB_API_KEY }
+    if (!symbol) return res.status(400).json({ error: "Symbol is required" });
+
+    // 1. Fetch price targets
+    const { data: targetData } = await axios.get(
+      `https://finnhub.io/api/v1/stock/price-target`,
+      { params: { symbol, token: FINNHUB_API_KEY } }
+    );
+
+    // 2. Fetch recommendation summary
+    const { data: recommendation } = await axios.get(
+      `https://finnhub.io/api/v1/stock/recommendation`,
+      { params: { symbol, token: FINNHUB_API_KEY } }
+    );
+    const latestRec = recommendation?.[0] || {};
+
+    // 3. Fetch actual historical prices (12 months of monthly data)
+    const now = moment();
+    const from = now.clone().subtract(12, "months").unix();
+    const to = now.unix();
+
+    const { data: candles } = await axios.get(
+      `https://finnhub.io/api/v1/stock/candle`,
+      {
+        params: {
+          symbol,
+          resolution: "M", // Monthly data
+          from,
+          to,
+          token: FINNHUB_API_KEY,
+        },
+      }
+    );
+
+    let labels = [];
+    let pastPrices = [];
+
+    if (candles.s === "ok") {
+      labels = candles.t.map((ts) =>
+        moment.unix(ts).format("MMM")
+      );
+      pastPrices = candles.c.map((c) => Number(c.toFixed(2)));
+    }
+
+    const lastClose = pastPrices.at(-1);
+    const forecastAvg = parseFloat(targetData.targetMean || 0);
+    const forecastHigh = parseFloat(targetData.targetHigh || 0);
+    const forecastLow = parseFloat(targetData.targetLow || 0);
+
+    const forecastData = {
+      average: [],
+      high: [],
+      low: [],
+    };
+
+    if (lastClose && forecastAvg && forecastHigh && forecastLow) {
+      for (let i = 0; i < 12; i++) {
+        forecastData.average.push(
+          Number(lastClose + ((forecastAvg - lastClose) / 12) * i).toFixed(2)
+        );
+        forecastData.high.push(
+          Number(lastClose + ((forecastHigh - lastClose) / 12) * i).toFixed(2)
+        );
+        forecastData.low.push(
+          Number(lastClose + ((forecastLow - lastClose) / 12) * i).toFixed(2)
+        );
+      }
+    }
+
+    res.json({
+      currentPrice: lastClose ? `$${lastClose.toFixed(2)}` : "N/A",
+      upside:
+        lastClose && forecastAvg
+          ? `${(((forecastAvg - lastClose) / lastClose) * 100).toFixed(1)}% Upside`
+          : "N/A",
+      chart: {
+        labels,
+        pastPrices,
+        forecast: forecastData,
+      },
+      targets: {
+        high: `$${forecastHigh.toFixed(2)}`,
+        average: `$${forecastAvg.toFixed(2)}`,
+        low: `$${forecastLow.toFixed(2)}`,
+      },
+      analysts: {
+        buy: latestRec.buy || 0,
+        hold: latestRec.hold || 0,
+        sell: latestRec.sell || 0,
+        total:
+          (latestRec.buy || 0) +
+          (latestRec.hold || 0) +
+          (latestRec.sell || 0),
+      },
     });
-    res.json(data);
   } catch (err) {
-    res.status(500).json({ error: 'Error fetching target price' });
+    console.error("Target price error:", err.message);
+    res.status(500).json({ error: "Failed to load stock target price data" });
   }
 };
+
+
 
 
 // exports.getStockCashFlow = async (req, res) => {
