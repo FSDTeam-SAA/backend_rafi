@@ -1,7 +1,7 @@
 const SubscriptionPlan = require('../models/subscriptionPlan.models')
 
 // Helper: Consistent response formatter
-export const sendResponse = (res, status, success, message, data = null) => {
+exports.sendResponse = (res, status, success, message, data = null) => {
   res.status(status).json({
     success,
     message,
