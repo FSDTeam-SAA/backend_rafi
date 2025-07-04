@@ -28,10 +28,10 @@ const userSchema = mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["admin", "user","influencer"],
+      enum: ["admin", "user", "influencer"],
       default: "user",
     },
-    address:{
+    address: {
       type: String,
     },
     followers: {
@@ -41,17 +41,21 @@ const userSchema = mongoose.Schema(
     refferCode: {
       type: String,
       unique: true
-      },
-    refferCount : {
+    },
+    verificationInfo: {
+      verified: { type: Boolean, default: false },
+      token: { type: String, default: '' },
+    },
+    refferCount: {
       type: Number,
       default: 0
-      },
-      password_reset_token: {
-        type: String,
-        },
-        refreshToken:{
-          type:String
-        }
+    },
+    password_reset_token: {
+      type: String,
+    },
+    refreshToken: {
+      type: String
+    }
   },
   {
     timestamps: true,
@@ -100,6 +104,11 @@ userSchema.methods.verifyAccessToken = async function (token) {
     return decoded;
   });
 };
+
+userSchema.methods.isOTPVerified = async function (id) {
+  const user = await User.findById(id).select('+verificationInfo')
+  return user?.verificationInfo.verified
+}
 
 const User = mongoose.model("User", userSchema);
 

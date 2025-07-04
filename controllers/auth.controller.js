@@ -7,10 +7,13 @@ const { sendMail } = require('../config/mailer')
 const bcrypt = require('bcrypt')
 const { sendResponse } = require('./subscriptionPlan.controller')
 
+
+
+
 // register user
 const registration = async (req, res) => {
   try {
-    const { userName,phoneNumber, email, password, confirmPassword } = req.body
+    const { userName, phoneNumber, email, password, confirmPassword } = req.body
 
     if (!userName || !email) {
       return res
@@ -28,8 +31,18 @@ const registration = async (req, res) => {
     if (userFound) {
       return res.status(400).json(apiResponse(400, `user already exists on this email ${email}`))
     }
+    const otp = generateOTP();
+    const jwtPayloadOTP = {
+      otp: otp,
+    };
 
-    const user = await User.create({ userName, email, password,phoneNumber })
+    const otptoken = createToken(
+      jwtPayloadOTP,
+      process.env.OTP_SECRET,
+      process.env.OTP_EXPIRE
+    );
+
+    const user = await User.create({ userName, email, password, phoneNumber,verificationInfo: { token: otptoken, verified: false }, })
 
     return res
       .status(201)
@@ -41,7 +54,7 @@ const registration = async (req, res) => {
 
 // login user
 const login = async (req, res) => {
-  const { email, password, gLogin,name } = req.body
+  const { email, password, gLogin, name } = req.body
   try {
     const userFound = await User.findOne({ email })
     if (!userFound && !gLogin) {
@@ -50,21 +63,11 @@ const login = async (req, res) => {
 
     if (gLogin) {
       let user1 = userFound
-      const generateOTP = () => {
 
-        // Declare a digits variable  
-        // which stores all digits 
-        var digits = '0123456789';
-        let OTP = '';
-        for (let i = 0; i < 6; i++) {
-          OTP += digits[Math.floor(Math.random() * 10)];
-        }
-        return OTP;
-      }
-  
+
       const pass = generateOTP()
 
-  
+
       if (!userFound) {
         user1 = await User.create({
           userName: name,
@@ -78,7 +81,7 @@ const login = async (req, res) => {
           `Your Password is ${pass}`
         )
       }
-  
+
       const jwtPayload = {
         _id: user1._id,
         email: user1.email,
@@ -94,9 +97,9 @@ const login = async (req, res) => {
         process.env.JWT_REFRESH_SECRET,
         process.env.JWT_REFRESH_EXPIRES_IN
       )
-  
+
       // let _user = await user1.save()
-  
+
       // res.status(200).json({
       //   success: true,
       //   message: 'User Logged in successfully',
@@ -116,6 +119,33 @@ const login = async (req, res) => {
         })
       )
     }
+
+      if (!(await userFound.isOTPVerified(userFound._id))) {
+    const otp = generateOTP();
+    const jwtPayloadOTP = {
+      otp: otp,
+    };
+
+    const otptoken = createToken(
+      jwtPayloadOTP,
+      process.env.OTP_SECRET,
+      process.env.OTP_EXPIRE
+    );
+    userFound.verificationInfo.token = otptoken;
+    await userFound.save();
+    await sendMail(userFound.email, "Registerd Account", `Your OTP is ${otp}`);
+
+    // return sendResponse(res, {
+    //   statusCode: 400,
+    //   success: false,
+    //   message: "OTP is not verified, please verify your OTP",
+    //   data: { email: userFound.email },
+    // });
+    return res.status (400).json({
+      success: false,
+      message: "OTP is not verified, please verify your OTP",
+      })
+  }
 
     // check user exist or not
     const isPasswordCorrect = await userFound.correctPassword(password)
@@ -158,17 +188,17 @@ const login = async (req, res) => {
   }
 }
 
- const generateOTP = () => {
+const generateOTP = () => {
 
-    // Declare a digits variable  
-    // which stores all digits 
-    var digits = '0123456789';
-    let OTP = '';
-    for (let i = 0; i < 6; i++) {
-      OTP += digits[Math.floor(Math.random() * 10)];
-    }
-    return OTP;
+  // Declare a digits variable  
+  // which stores all digits 
+  var digits = '0123456789';
+  let OTP = '';
+  for (let i = 0; i < 6; i++) {
+    OTP += digits[Math.floor(Math.random() * 10)];
   }
+  return OTP;
+}
 
 // forget password
 const forgotPassword = async (req, res) => {
@@ -180,13 +210,13 @@ const forgotPassword = async (req, res) => {
       return
     }
 
-    
-    
+
+
     const otp = generateOTP()
     const jwtPayloadOTP = {
       otp: otp,
     };
-    
+
     const token = jwt.sign(jwtPayloadOTP, process.env.JWT_ACCESS_SECRET, {
       expiresIn: '50h',
     })
@@ -280,7 +310,7 @@ const forgotPassword = async (req, res) => {
 }
 
 // verify otp
- const verifyOtp = async (req, res) => {
+const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body
 
@@ -310,6 +340,43 @@ const forgotPassword = async (req, res) => {
     return res
       .status(500)
       .json({ success: false, message: 'Failed to verify OTP' })
+  }
+}
+
+const verifyEmail = async (req, res) => {
+  const { email, otp } = req.body;
+  const user  = await User.findOne({email: email});
+  if (!user) {
+    res.status(404).json({ success: false, message: 'User not found' });
+  }
+  if (user.verificationInfo.verified) {
+    res.status(400).json({ success: false, message: 'Email already verified' });
+  }
+  if (otp) {
+    const savedOTP = jwt.decode(
+      user.verificationInfo.token,
+      process.env.OTP_SECRET
+    );
+    console.log(savedOTP);
+    if (otp === savedOTP.otp) {
+      user.verificationInfo.verified = true;
+      user.verificationInfo.token = "";
+      await user.save();
+
+      // sendResponse(res, {
+      //   statusCode: httpStatus.OK,
+      //   success: true,
+      //   message: "User verified",
+      //   data: "",
+      // });
+      return res.status(200).json({ success: true, message: 'Email verified' });
+    } else {
+      // throw new AppError(httpStatus.BAD_REQUEST, "Invalid OTP");
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+  } else {
+    // throw new AppError(httpStatus.BAD_REQUEST, "OTP is required");
+    return res.status(400).json({ success: false, message: 'OTP is required'})
   }
 }
 
@@ -347,7 +414,7 @@ const forgotPassword = async (req, res) => {
 //   }
 // }
 
- const resetPassword = async (req, res) => {
+const resetPassword = async (req, res) => {
   try {
     const { email, otp, password } = req.body
 
@@ -432,10 +499,10 @@ const logout = async (req, res) => {
     { refreshToken: "" },
     { new: true }
   );
-res.status(200).send({
-  success: true,
-  message: "Logged out successfully",
-})
+  res.status(200).send({
+    success: true,
+    message: "Logged out successfully",
+  })
 }
 
 
@@ -448,4 +515,5 @@ module.exports = {
   logout,
   verifyOtp,
   changePassword,
+  verifyEmail
 }
