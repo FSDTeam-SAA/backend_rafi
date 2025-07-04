@@ -44,7 +44,7 @@ const login = async (req, res) => {
   const { email, password, gLogin,name } = req.body
   try {
     const userFound = await User.findOne({ email })
-    if (!userFound) {
+    if (!userFound && !gLogin) {
       return res.status(404).json(apiResponse(404, 'user not found'))
     }
 
