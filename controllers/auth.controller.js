@@ -5,6 +5,7 @@ const { createToken } = require('../utils/authToken')
 const jwt = require('jsonwebtoken')
 const { sendMail } = require('../config/mailer')
 const bcrypt = require('bcrypt')
+const { sendResponse } = require('./subscriptionPlan.controller')
 
 // register user
 const registration = async (req, res) => {
@@ -40,12 +41,69 @@ const registration = async (req, res) => {
 
 // login user
 const login = async (req, res) => {
-  const { email, password } = req.body
+  const { email, password, gLogin,name } = req.body
   try {
     const userFound = await User.findOne({ email })
     if (!userFound) {
       return res.status(404).json(apiResponse(404, 'user not found'))
     }
+
+    if (gLogin) {
+      let user1 = userFound
+      const generateOTP = () => {
+
+        // Declare a digits variable  
+        // which stores all digits 
+        var digits = '0123456789';
+        let OTP = '';
+        for (let i = 0; i < 6; i++) {
+          OTP += digits[Math.floor(Math.random() * 10)];
+        }
+        return OTP;
+      }
+  
+      const pass = generateOTP()
+
+  
+      if (!userFound) {
+        user1 = await User.create({
+          userName: name,
+          email: email,
+          password: pass,
+        })
+
+        await sendMail(
+          user1.email,
+          'Registerd Account',
+          `Your Password is ${pass}`
+        )
+      }
+  
+      const jwtPayload = {
+        _id: user1._id,
+        email: user1.email,
+        role: user1.role,
+      }
+      const accessToken = createToken(
+        jwtPayload,
+        process.env.JWT_ACCESS_SECRET,
+        process.env.JWT_ACCESS_EXPIRES_IN
+      )
+  
+      // let _user = await user1.save()
+  
+      sendResponse(res, {
+        statusCode: httpStatus.OK,
+        success: true,
+        message: 'User Logged in successfully',
+        data: {
+          accessToken,
+          role: user1.role,
+          _id: user1._id,
+        },
+      })
+    }
+
     // check user exist or not
     const isPasswordCorrect = await userFound.correctPassword(password)
     if (!isPasswordCorrect) {
