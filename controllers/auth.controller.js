@@ -89,19 +89,32 @@ const login = async (req, res) => {
         process.env.JWT_ACCESS_SECRET,
         process.env.JWT_ACCESS_EXPIRES_IN
       )
+      const refreshToken = createToken(
+        jwtPayload,
+        process.env.JWT_REFRESH_SECRET,
+        process.env.JWT_REFRESH_EXPIRES_IN
+      )
   
       // let _user = await user1.save()
   
-      sendResponse(res, {
-        statusCode: 200,
-        success: true,
-        message: 'User Logged in successfully',
-        data: {
-          accessToken,
-          role: user1.role,
-          _id: user1._id,
-        },
-      })
+      // res.status(200).json({
+      //   success: true,
+      //   message: 'User Logged in successfully',
+      //   data: {
+      //     accessToken,
+      //     role: user1.role,
+      //     _id: user1._id,
+      //   },
+      // })
+      return res.status(200).json(
+        apiResponse(200, 'login successful', {
+          user: user1,
+          token: {
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+          },
+        })
+      )
     }
 
     // check user exist or not
