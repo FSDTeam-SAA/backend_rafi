@@ -93,7 +93,7 @@ const login = async (req, res) => {
       // let _user = await user1.save()
   
       sendResponse(res, {
-        statusCode: httpStatus.OK,
+        statusCode: 200,
         success: true,
         message: 'User Logged in successfully',
         data: {
