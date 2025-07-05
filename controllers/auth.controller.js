@@ -41,8 +41,9 @@ const registration = async (req, res) => {
       process.env.OTP_SECRET,
       process.env.OTP_EXPIRE
     );
-
+    
     const user = await User.create({ userName, email, password, phoneNumber,verificationInfo: { token: otptoken, verified: false }, })
+    await sendMail(user.email, "Registerd Account", `Your OTP is ${otp}`);
 
     return res
       .status(201)
