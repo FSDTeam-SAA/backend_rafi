@@ -1,5 +1,6 @@
 const { sendMail } = require("../config/mailer");
 const Notification = require("../models/notificatiuon.model");
+const PaymentInfo = require("../models/payment.model");
 const User = require("../models/user.model");
 const { uploadOnCloudinary } = require("../utils/cloudnary");
 
@@ -75,10 +76,13 @@ exports.singleUser = async (req, res) => {
         message: 'User not found',
       })
     }
+    const payment = await PaymentInfo.find({userId: id, paymentStatus: "complete"}).sort({createdAt: -1}).limit(1).populate("subscriptionId")
+
     res.status(200).send({
       status: true,
       message: 'success',
-      data: user
+      data: user,
+      payment: payment[0]?.subscriptionId?.title || null
     })
   } catch (error) {
     res.status(500).send({
