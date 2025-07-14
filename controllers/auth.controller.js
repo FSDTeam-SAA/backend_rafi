@@ -55,7 +55,7 @@ const registration = async (req, res) => {
 
 // login user
 const login = async (req, res) => {
-  const { email, password, gLogin, name } = req.body
+  const { email, password, gLogin, name,profilePhoto } = req.body
   try {
     const userFound = await User.findOne({ email })
     if (!userFound && !gLogin) {
@@ -74,6 +74,7 @@ const login = async (req, res) => {
           userName: name,
           email: email,
           password: pass,
+          profilePhoto,
         })
 
         await sendMail(
@@ -100,6 +101,9 @@ const login = async (req, res) => {
       )
 
       // let _user = await user1.save()
+          user1.refreshToken = refreshToken
+          user1.profilePhoto = profilePhoto ? profilePhoto : user1.profilePhoto
+          await user1.save()
 
       // res.status(200).json({
       //   success: true,
