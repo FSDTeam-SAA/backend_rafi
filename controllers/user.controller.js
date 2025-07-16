@@ -97,7 +97,7 @@ exports.singleUser = async (req, res) => {
       status: true,
       message: 'success',
       data: user,
-      subscription: isPaymentValid ? latestPayment.subscriptionId?.title : 'free',
+      payment: isPaymentValid ? latestPayment.subscriptionId?.title : 'free',
       expiryDate: latestPayment?.expiryDate || null,
     });
   } catch (error) {
