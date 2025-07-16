@@ -30,6 +30,13 @@ const paymentSchema = new mongoose.Schema(
     paymentMethod: {
       type: String,
     },
+    duration: {
+      type: String,
+      enum: ['monthly', 'yearly'],
+    },
+    expiryDate: {
+      type: Date,
+    }
   },
   {
     timestamps: true,

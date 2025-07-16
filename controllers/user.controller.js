@@ -68,30 +68,47 @@ exports.GetAllReffer = async (req, res) => {
 
 exports.singleUser = async (req, res) => {
   try {
-    const id = req.params.id
-    const user = await User.findById(id)
+    const id = req.params.id;
+    const user = await User.findById(id);
     if (!user) {
       return res.status(404).json({
         status: false,
         message: 'User not found',
-      })
+      });
     }
-    const payment = await PaymentInfo.find({userId: id, paymentStatus: "complete"}).sort({createdAt: -1}).limit(1).populate("subscriptionId")
+
+    // Get the most recent completed payment
+    const payment = await PaymentInfo.find({
+      userId: id,
+      paymentStatus: 'complete',
+    })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .populate('subscriptionId');
+
+    const latestPayment = payment[0];
+    const currentDate = new Date();
+
+    // Check if payment is valid (i.e., not expired)
+    const isPaymentValid =
+      latestPayment && latestPayment.expiryDate > currentDate;
 
     res.status(200).send({
       status: true,
       message: 'success',
       data: user,
-      payment: payment[0]?.subscriptionId?.title || null
-    })
+      subscription: isPaymentValid ? latestPayment.subscriptionId?.title : 'free',
+      expiryDate: latestPayment?.expiryDate || null,
+    });
   } catch (error) {
     res.status(500).send({
       status: false,
       message: 'server error',
-      error: error.message
-    })
+      error: error.message,
+    });
   }
-}
+};
+
 
 exports.support = async (req, res) => {
   try {
