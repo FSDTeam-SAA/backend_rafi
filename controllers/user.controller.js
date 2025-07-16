@@ -47,24 +47,78 @@ exports.updateUser = async (req, res) => {
   }
 }
 
+// exports.GetAllReffer = async (req, res) => {
+//   try {
+//     const user = await User.find().select('userName email refferCount')
+//     res.status(200).send({
+//       status: true,
+//       message: 'success',
+//       data: user
+//     })
+
+//   } catch (error) {
+//     res.status(500).send({
+//       status: false,
+//       message: 'server error',
+//       error: error.message
+//     })
+
+//   }
+// }
+
+// const User = require('../models/User');
+// const PaymentInfo = require('../models/paymentInfo');
+
 exports.GetAllReffer = async (req, res) => {
   try {
-    const user = await User.find().select('userName email refferCount')
+    const users = await User.find().select('userName email refferCount');
+
+    const enrichedUsers = await Promise.all(users.map(async (user) => {
+      const latestPayment = await PaymentInfo.findOne({
+        userId: user._id,
+        paymentStatus: 'complete',
+        expiryDate: { $gt: new Date() }
+      }).sort({ createdAt: -1 });
+
+      const isPaidUser = !!latestPayment;
+
+      return {
+        _id: user._id,
+        userName: user.userName,
+        email: user.email,
+        refferCount: user.refferCount,
+        status: isPaidUser ? 'Paid' : 'Unpaid',
+        isPaidUser,
+      };
+    }));
+
+    // Split into paid and unpaid users
+    const paidUsers = enrichedUsers.filter(user => user.isPaidUser);
+    const unpaidUsers = enrichedUsers.filter(user => !user.isPaidUser);
+
     res.status(200).send({
       status: true,
       message: 'success',
-      data: user
-    })
+      totalUsers: enrichedUsers.length,
+      totalPaidUsers: paidUsers.length,
+      totalUnpaidUsers: unpaidUsers.length,
+      data: {
+        user: enrichedUsers,
+        paidUsers,
+        unpaidUsers
+      }
+    });
 
   } catch (error) {
     res.status(500).send({
       status: false,
       message: 'server error',
       error: error.message
-    })
-
+    });
   }
-}
+};
+
+
 
 exports.singleUser = async (req, res) => {
   try {

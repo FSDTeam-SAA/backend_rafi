@@ -382,16 +382,186 @@ const finnhubClient = new finnhub.DefaultApi();
 // };
 
 
+// exports.getPortfolioOverview = async (req, res) => {
+//   try {
+//     const { id } = req.body;
+
+//     const portfolio = await Protfolio.findById(id);
+//     if (!portfolio) return res.status(404).json({ error: "Portfolio not found" });
+//     // console.log( portfolio );
+
+//     const today = moment().unix();
+//     const thirtyDaysAgo = moment().subtract(30, 'days').unix();
+
+//     let totalValue = 0, dailyChange = 0, startValue = 0;
+//     let totalInvested = 0;
+//     let totalRealizedEarnings = 0;
+
+//     const detailed = await Promise.all(
+//       portfolio.stocks.map(async (holding) => {
+//         try {
+//           //  console.log( holding)
+//           // Calculate net quantity and average buy price
+//           let netQuantity = 0;
+//           let totalCost = 0;
+
+//           // holding.transection.forEach(tx => {
+//           //   console.log(tx.event)
+//           //   if (tx.event === 'buy') {
+//           //     netQuantity += tx.quantity;
+//           //     totalCost += tx.price * tx.quantity;
+//           //   } else if (tx.event === 'sell') {
+//           //     netQuantity -= tx.quantity;
+//           //     // Optional: remove from cost basis if you want weighted average
+//           //   }
+//           // });
+
+//           holding.transection.forEach(tx => {
+//             if (tx.event === 'buy') {
+//               netQuantity += tx.quantity;
+//               totalCost += tx.price * tx.quantity;
+//               totalInvested += tx.price * tx.quantity; // track total invested
+//             } else if (tx.event === 'sell') {
+//               netQuantity -= tx.quantity;
+//               totalRealizedEarnings += tx.price * tx.quantity; // track realized earnings
+//             }
+//           });
+
+
+//           // console.log( netQuantity );
+
+//           // if (netQuantity <= 0) return null; // skip fully sold stocks
+
+//           const avgBuyPrice = totalCost / netQuantity;
+
+
+//           const [companyProfile, quote, candleData, olive, priceTarget] = await Promise.all([
+//             new Promise((resolve) =>
+//               finnhubClient.companyProfile2({ symbol: holding.symbol }, (err, data) =>
+//                 resolve(err ? {} : data)
+//               )
+//             ),
+//             new Promise((resolve, reject) =>
+//               finnhubClient.quote(holding.symbol, (err, data) =>
+//                 err || !data?.c ? reject(err || new Error('Invalid quote')) : resolve(data)
+//               )
+//             ),
+//             new Promise((resolve) =>
+//               finnhubClient.stockCandles(
+//                 holding.symbol,
+//                 'D',
+//                 thirtyDaysAgo,
+//                 today,
+//                 (err, data) => resolve(err || data.s !== 'ok' ? {} : data)
+//               )
+//             ),
+//             Olive.findOne({ symbol: holding.symbol }).exec(),
+//             new Promise((resolve) =>
+//               finnhubClient.priceTarget(holding.symbol, (err, data) =>
+//                 resolve(err ? {} : data)
+//               )
+//             ),
+//           ]);
+
+//           const quadrant = olive
+//             ? olive.financial_health === "good" && olive.compatitive_advantage === "good"
+//               ? 'Olive Green'
+//               : olive.financial_health === "good"
+//                 ? 'Lime Green'
+//                 : olive.compatitive_advantage === "good"
+//                   ? 'Orange'
+//                   : 'Yellow'
+//             : 'Unknown';
+
+//           const olives = {
+//             financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
+//             competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
+//             valuation: quote.c <= olive?.fair_value ? 'green' : 'gray',
+//           };
+
+//           const currentValue = quote.c * netQuantity;
+//           const currentChange = quote.d * netQuantity;
+//           const gainLossPercent = ((quote.c - avgBuyPrice) / avgBuyPrice) * 100;
+
+//           totalValue += currentValue;
+//           dailyChange += currentChange;
+
+//           let oneMonthReturn = '0.00%';
+//           if (candleData?.c && candleData.c.length) {
+//             const priceThen = candleData.c[0]; // price 30 days ago
+//             const holdingReturn = ((quote.c - priceThen) / priceThen) * 100;
+//             startValue += priceThen * netQuantity;
+//             oneMonthReturn = `${holdingReturn.toFixed(2)}%`;
+//           }
+
+//           return {
+//             logo: companyProfile.logo || '',
+//             name: companyProfile.name || '',
+//             symbol: holding.symbol,
+//             shares: netQuantity,
+//             avgBuyPrice,
+//             costBasis: avgBuyPrice * netQuantity,
+//             holdingPrice: avgBuyPrice.toFixed(2),
+//             holdingGain: gainLossPercent.toFixed(2),
+//             price: quote.c,
+//             change: quote.d,
+//             percent: quote.dp,
+//             value: currentValue.toFixed(2),
+//             unrealized: currentValue.toFixed(2) - (avgBuyPrice * netQuantity),
+//             pL: ((currentValue.toFixed(2) - (avgBuyPrice * netQuantity)) / (avgBuyPrice * netQuantity)) * 100,
+//             olives,
+//             quadrant: olive?.fair_value,
+//             oneMonthReturn,
+//             priceTarget: {
+//               high: priceTarget.targetHigh || null,
+//               low: priceTarget.targetLow || null,
+//               mean: priceTarget.targetMean || null
+//             }
+//           };
+//         } catch (err) {
+//           console.warn(`Skipping ${holding.symbol}:`, err.message);
+//           return null;
+//         }
+//       })
+//     );
+
+//     const filteredHoldings = detailed.filter(Boolean);
+//     const cash = portfolio.cash || 0;
+//     const monthlyReturn =
+//       startValue > 0 ? (((totalValue - startValue) / startValue) * 100).toFixed(2) : '0.00';
+//     const unrealizedGains = totalValue - (totalInvested - totalRealizedEarnings);
+//     const overallReturn = totalInvested > 0
+//       ? ((totalRealizedEarnings + unrealizedGains) / totalInvested) * 100
+//       : 0;
+
+//     res.status(200).json({
+//       totalHoldings: totalValue.toFixed(2),
+//       cash,
+//       totalValueWithCash: (totalValue + cash).toFixed(2),
+//       dailyReturn: dailyChange.toFixed(2),
+//       dailyReturnPercent: ((dailyChange / totalValue) * 100).toFixed(2),
+//       monthlyReturnPercent: monthlyReturn,
+//       holdings: filteredHoldings,
+//       unrealizedGains: unrealizedGains.toFixed(2),
+//       overallReturnPercent: overallReturn.toFixed(2),
+//     });
+//   } catch (err) {
+//     console.error("Portfolio overview error:", err);
+//     res.status(500).json({ error: "Portfolio overview failed", detail: err.message });
+//   }
+// };
+
+
+
 exports.getPortfolioOverview = async (req, res) => {
   try {
     const { id } = req.body;
-
     const portfolio = await Protfolio.findById(id);
     if (!portfolio) return res.status(404).json({ error: "Portfolio not found" });
-    // console.log( portfolio );
 
     const today = moment().unix();
     const thirtyDaysAgo = moment().subtract(30, 'days').unix();
+    const todayStart = moment().startOf('day').unix(); // for pre-market candles
 
     let totalValue = 0, dailyChange = 0, startValue = 0;
     let totalInvested = 0;
@@ -400,42 +570,24 @@ exports.getPortfolioOverview = async (req, res) => {
     const detailed = await Promise.all(
       portfolio.stocks.map(async (holding) => {
         try {
-          //  console.log( holding)
-          // Calculate net quantity and average buy price
           let netQuantity = 0;
           let totalCost = 0;
-
-          // holding.transection.forEach(tx => {
-          //   console.log(tx.event)
-          //   if (tx.event === 'buy') {
-          //     netQuantity += tx.quantity;
-          //     totalCost += tx.price * tx.quantity;
-          //   } else if (tx.event === 'sell') {
-          //     netQuantity -= tx.quantity;
-          //     // Optional: remove from cost basis if you want weighted average
-          //   }
-          // });
 
           holding.transection.forEach(tx => {
             if (tx.event === 'buy') {
               netQuantity += tx.quantity;
               totalCost += tx.price * tx.quantity;
-              totalInvested += tx.price * tx.quantity; // track total invested
+              totalInvested += tx.price * tx.quantity;
             } else if (tx.event === 'sell') {
               netQuantity -= tx.quantity;
-              totalRealizedEarnings += tx.price * tx.quantity; // track realized earnings
+              totalRealizedEarnings += tx.price * tx.quantity;
             }
           });
 
-
-          // console.log( netQuantity );
-
-          // if (netQuantity <= 0) return null; // skip fully sold stocks
-
+          if (netQuantity <= 0) return null;
           const avgBuyPrice = totalCost / netQuantity;
 
-
-          const [companyProfile, quote, candleData, olive, priceTarget] = await Promise.all([
+          const [companyProfile, quote, candleData, olive, priceTarget, preMarketCandles] = await Promise.all([
             new Promise((resolve) =>
               finnhubClient.companyProfile2({ symbol: holding.symbol }, (err, data) =>
                 resolve(err ? {} : data)
@@ -461,7 +613,25 @@ exports.getPortfolioOverview = async (req, res) => {
                 resolve(err ? {} : data)
               )
             ),
+            new Promise((resolve) =>
+              finnhubClient.stockCandles(
+                holding.symbol,
+                '1', // 1-minute resolution
+                todayStart,
+                today,
+                (err, data) => resolve(err || data.s !== 'ok' ? {} : data)
+              )
+            ),
           ]);
+
+          // const preMarketPrice = preMarketCandles?.c?.length ? preMarketCandles.c[0] : null;
+          const preMarketPrice = preMarketCandles?.c?.length ? preMarketCandles.c[0] : null;
+          const previousClose = quote?.pc || null;
+
+          let preMarketChangePercent = null;
+          if (preMarketPrice && previousClose) {
+            preMarketChangePercent = ((preMarketPrice - previousClose) / previousClose) * 100;
+          }
 
           const quadrant = olive
             ? olive.financial_health === "good" && olive.compatitive_advantage === "good"
@@ -488,7 +658,7 @@ exports.getPortfolioOverview = async (req, res) => {
 
           let oneMonthReturn = '0.00%';
           if (candleData?.c && candleData.c.length) {
-            const priceThen = candleData.c[0]; // price 30 days ago
+            const priceThen = candleData.c[0];
             const holdingReturn = ((quote.c - priceThen) / priceThen) * 100;
             startValue += priceThen * netQuantity;
             oneMonthReturn = `${holdingReturn.toFixed(2)}%`;
@@ -504,11 +674,13 @@ exports.getPortfolioOverview = async (req, res) => {
             holdingPrice: avgBuyPrice.toFixed(2),
             holdingGain: gainLossPercent.toFixed(2),
             price: quote.c,
+            preMarketPrice: parseFloat(preMarketPrice) || null,
+            preMarketChangePercent: parseFloat(preMarketChangePercent) ? parseFloat(preMarketChangePercent.toFixed(2)) : null,
             change: quote.d,
             percent: quote.dp,
             value: currentValue.toFixed(2),
-            unrealized: currentValue.toFixed(2) - (avgBuyPrice * netQuantity),
-            pL: ((currentValue.toFixed(2) - (avgBuyPrice * netQuantity)) / (avgBuyPrice * netQuantity)) * 100,
+            unrealized: (currentValue - avgBuyPrice * netQuantity).toFixed(2),
+            pL: (((currentValue - avgBuyPrice * netQuantity) / (avgBuyPrice * netQuantity)) * 100).toFixed(2),
             olives,
             quadrant: olive?.fair_value,
             oneMonthReturn,
@@ -550,7 +722,6 @@ exports.getPortfolioOverview = async (req, res) => {
     res.status(500).json({ error: "Portfolio overview failed", detail: err.message });
   }
 };
-
 
 
 exports.getTopMovers = async (req, res) => {

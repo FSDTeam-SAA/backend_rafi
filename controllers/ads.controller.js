@@ -5,22 +5,8 @@ const cloudinary = require("cloudinary").v2;
 
 exports.createAd = async (req, res) => {
     try {
-        const { adsTitle, adsContent, } = req.body;
-        // const author = req.user._id; // Assuming you have user authentication middleware
-        const existingAd = await Ads.findOne({ adsTitle });
-        if (existingAd) {
-            return res.status(400).json({
-                status: false,
-                message: 'Ad with this title already exists',
-            });
-        }
-        // Validate the request body
-        if (!adsTitle || !adsContent) {
-            return res.status(400).json({
-                status: false,
-                message: 'All fields are required',
-            });
-        }
+        const { adsTitle, adsContent, url} = req.body;
+
         let imageLink
         if (req.file) {
             try {
@@ -38,6 +24,7 @@ exports.createAd = async (req, res) => {
             adsTitle,
             adsContent,
             imageLink,
+            url
             // author,
         });
         await ad.save();
@@ -132,20 +119,13 @@ exports.getSingleAd = async (req, res) => {
 exports.updateAd = async (req, res) => {
     try {
         const adId = req.params.id;
-        const { adsTitle, adsContent } = req.body;
+        const { adsTitle, adsContent ,url} = req.body;
         // const author = req.user._id; // Assuming you have user authentication middleware
         const existingAd = await Ads.findById(adId);
         if (!existingAd) {
             return res.status(404).json({
                 status: false,
                 message: 'Ad not found',
-            });
-        }
-        // Validate the request body
-        if (!adsTitle || !adsContent ) {
-            return res.status(400).json({
-                status: false,
-                message: 'All fields are required',
             });
         }
         if (req.file) {
@@ -164,6 +144,7 @@ exports.updateAd = async (req, res) => {
         // Update the ad item       
         existingAd.adsTitle = adsTitle;
         existingAd.adsContent = adsContent;
+        existingAd.url = url;
         // existingAd.author = author;
 
         await existingAd.save();
