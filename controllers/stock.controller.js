@@ -254,6 +254,61 @@ exports.searchStocks = async (req, res) => {
 };
 
 
+exports.filterStocks = async (req, res) => {
+  try {
+    const olives = await Olive.find();
+
+    const results = await Promise.all(olives.map(async (olive) => {
+      const quote = await new Promise((resolve, reject) =>
+        finnhubClient.quote(olive.symbol, (err, data) =>
+          err || !data?.c ? reject(err || new Error("No price")) : resolve(data)
+        )
+      );
+
+      const colorMap = {
+        financialHealth: olive.financial_health === 'good' ? 'green' : 'gray',
+        competitiveAdvantage: olive.compatitive_advantage === 'good' ? 'green' : 'gray',
+        valuation: quote.c <= olive.fair_value ? 'green' : 'gray',
+      };
+
+      const greenCount = Object.values(colorMap).filter(color => color === 'green').length;
+
+      let category = 'Zero Olive';
+      if (greenCount === 3) category = 'Three Olive';
+      else if (greenCount === 2) category = 'Two Olive';
+
+      return {
+        symbol: olive.symbol,
+        fair_value: olive.fair_value,
+        current_price: quote.c,
+        olives: colorMap,
+        category
+      };
+    }));
+
+    const threeOlive = results.filter(stock => stock.category === 'Three Olive');
+    const twoOlive = results.filter(stock => stock.category === 'Two Olive');
+    const zeroOlive = results.filter(stock => stock.category === 'Zero Olive');
+
+    res.status(200).json({
+      status: true,
+      message: 'Stocks categorized by Olive status',
+      data: {
+        threeOlive,
+        twoOlive,
+        zeroOlive
+      }
+    });
+  } catch (err) {
+    console.error("Error filtering stocks:", err);
+    res.status(500).json({
+      status: false,
+      message: 'Internal server error',
+      error: err.message
+    });
+  }
+};
+
 
 
 // Utility: format date to UNIX timestamps
