@@ -1721,11 +1721,106 @@ exports.getPortfolioDashboard = async (req, res) => {
       })
     );
 
+    // const generateMonthlyComparison = async () => {
+    //   const months = [];
+    //   const now = moment().startOf('month');
+
+    //   for (let i = 0; i <= 5; i++) {
+    //     const monthStart = now.clone().subtract(i, 'months').startOf('month').unix();
+    //     const monthEnd = now.clone().subtract(i, 'months').endOf('month').unix();
+    //     const label = now.clone().subtract(i, 'months').format('MMM YYYY');
+
+    //     let portfolioStartValue = 0;
+    //     let portfolioEndValue = 0;
+    //     let mudarabahStart = 0;
+    //     let mudarabahEnd = 0;
+    //     let mudarabahCount = 0;
+
+    //     for (const stock of portfolio.stocks) {
+    //       try {
+    //         const candle = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+    //           params: {
+    //             symbol: stock.symbol,
+    //             resolution: 'D',
+    //             from: monthStart,
+    //             to: monthEnd,
+    //             token: process.env.FINHUB_API_KEY,
+    //           },
+    //         });
+    //         const c = candle.data.c;
+    //         if (!c || c.length < 2) continue;
+    //         portfolioStartValue += c[0] * stock.quantity;
+    //         portfolioEndValue += c[c.length - 1] * stock.quantity;
+    //       } catch { }
+    //     }
+
+    //     const quality = await qualityStocks.find({ type: 'protfolio' });
+    //     for (const s of quality.flatMap(q => q.stocks)) {
+    //       try {
+    //         const candle = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+    //           params: {
+    //             symbol: s.symbol,
+    //             resolution: 'D',
+    //             from: monthStart,
+    //             to: monthEnd,
+    //             token: process.env.FINHUB_API_KEY,
+    //           },
+    //         });
+    //         const c = candle.data.c;
+    //         if (!c || c.length < 2) continue;
+    //         mudarabahStart += c[0];
+    //         mudarabahEnd += c[c.length - 1];
+    //         mudarabahCount++;
+    //       } catch { }
+    //     }
+
+    //     let spStart = 0, spEnd = 0;
+    //     try {
+    //       const spCandle = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+    //         params: {
+    //           symbol: '^GSPC',
+    //           resolution: 'D',
+    //           from: monthStart,
+    //           to: monthEnd,
+    //           token: process.env.FINHUB_API_KEY,
+    //         },
+    //       });
+    //       const spClose = spCandle.data.c;
+    //       if (spClose && spClose.length >= 2) {
+    //         spStart = spClose[0];
+    //         spEnd = spClose[spClose.length - 1];
+    //       }
+    //     } catch { }
+
+    //     const monthlyReturn = portfolioStartValue > 0
+    //       ? ((portfolioEndValue - portfolioStartValue) / portfolioStartValue) * 100
+    //       : 0;
+    //     const mudarabahReturn = mudarabahStart > 0
+    //       ? ((mudarabahEnd - mudarabahStart) / mudarabahStart) * 100
+    //       : 0;
+    //     const sp500Return = spStart > 0
+    //       ? ((spEnd - spStart) / spStart) * 100
+    //       : 0;
+
+    //     months.push({
+    //       month: label,
+    //       portfolio: Number(monthlyReturn.toFixed(2)),
+    //       mudarabahAverage: Number(mudarabahReturn.toFixed(2)),
+    //       sp500: Number(sp500Return.toFixed(2)),
+    //     });
+    //   }
+    //   return months;
+    // };
+
+
     const generateMonthlyComparison = async () => {
       const months = [];
       const now = moment().startOf('month');
+      const createdAt = moment(portfolio.createdAt).startOf('month');
 
-      for (let i = 5; i >= 0; i--) {
+      const monthDiff = now.diff(createdAt, 'months');
+
+      for (let i = 0; i <= monthDiff; i++) {
         const monthStart = now.clone().subtract(i, 'months').startOf('month').unix();
         const monthEnd = now.clone().subtract(i, 'months').endOf('month').unix();
         const label = now.clone().subtract(i, 'months').format('MMM YYYY');
@@ -1802,7 +1897,7 @@ exports.getPortfolioDashboard = async (req, res) => {
           ? ((spEnd - spStart) / spStart) * 100
           : 0;
 
-        months.push({
+        months.unshift({ // unshift to keep chronological order (oldest first)
           month: label,
           portfolio: Number(monthlyReturn.toFixed(2)),
           mudarabahAverage: Number(mudarabahReturn.toFixed(2)),
@@ -1811,7 +1906,6 @@ exports.getPortfolioDashboard = async (req, res) => {
       }
       return months;
     };
-
     const returnsComparison = await generateMonthlyComparison();
     const performanceChart = {
       labels: returnsComparison.map((item) => item.month),
