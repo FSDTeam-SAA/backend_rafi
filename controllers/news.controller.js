@@ -11,7 +11,7 @@ const cloudinary = require("cloudinary").v2;
 //creating news
 exports.createNews = async (req, res) => {
     try {
-        const { symbol, newsTitle, newsDescription, source,isPaid } = req.body;
+        const { symbol, newsTitle, newsDescription, source,isPaid,lang } = req.body;
         // const author = req.user._id; 
         const date = new Date();
         const existingNews = await News.findOne({ newsTitle });
@@ -55,7 +55,8 @@ exports.createNews = async (req, res) => {
             // author,
             symbol,
             source,
-            isPaid
+            isPaid,
+            lang
         });
         await news.save();
         return res.status(201).json(
@@ -99,7 +100,8 @@ exports.uploadCSV = async (req, res) => {
                         // author,
                         symbol: data.symbol,
                         source: data.source,
-                        isPaid: data.isPaid
+                        isPaid: data.isPaid,
+                        lang: data.lang
                     });
                 } catch (parseErr) {
                     // Log or skip malformed row
@@ -210,7 +212,7 @@ exports.getSingleNews = async (req, res) => {
 exports.updateNews = async (req, res) => {
     try {
         const newsId = req.params.id;
-        const { newsTitle, newsDescription, symbol } = req.body;
+        const { newsTitle, newsDescription, symbol,isPaid,lang } = req.body;
         // const author = req.user._id;
 
         const existingNews = await News.findById(newsId);
@@ -240,6 +242,8 @@ exports.updateNews = async (req, res) => {
         if (newsTitle) existingNews.newsTitle = newsTitle;
         if (newsDescription) existingNews.newsDescription = newsDescription;
         if (symbol) existingNews.symbol = symbol;
+        if (isPaid) existingNews.isPaid = isPaid;
+        if (lang) existingNews.lang = lang;
 
         // existingNews.author = author;
         await existingNews.save();

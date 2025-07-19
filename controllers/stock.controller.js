@@ -256,6 +256,7 @@ exports.searchStocks = async (req, res) => {
 
 exports.filterStocks = async (req, res) => {
   try {
+    const { q } = req.query;
     const olives = await Olive.find();
 
     const results = await Promise.all(olives.map(async (olive) => {
@@ -264,6 +265,7 @@ exports.filterStocks = async (req, res) => {
           err || !data?.c ? reject(err || new Error("No price")) : resolve(data)
         )
       );
+      console.log(olive)
 
       const colorMap = {
         financialHealth: olive.financial_health === 'good' ? 'green' : 'gray',
@@ -273,9 +275,14 @@ exports.filterStocks = async (req, res) => {
 
       const greenCount = Object.values(colorMap).filter(color => color === 'green').length;
 
-      let category = 'Zero Olive';
-      if (greenCount === 3) category = 'Three Olive';
-      else if (greenCount === 2) category = 'Two Olive';
+      // let category = v ||'Zero Olive';//oneOlive
+      // if (greenCount === 3) category = 'Three Olive';//threeOlive
+      // else if (greenCount === 2) category = 'Two Olive';//twoOlive
+
+
+      let category = 'oneOlive' ||'Zero Olive';//oneOlive
+      if (greenCount === 3) category = 'threeOlive'||'Three Olive';//threeOlive
+      else if (greenCount === 2) category = 'twoOlive' || 'Two Olive';//twoOlive
 
       return {
         symbol: olive.symbol,
@@ -286,9 +293,7 @@ exports.filterStocks = async (req, res) => {
       };
     }));
 
-    const threeOlive = results.filter(stock => stock.category === 'Three Olive');
-    const twoOlive = results.filter(stock => stock.category === 'Two Olive');
-    const zeroOlive = results.filter(stock => stock.category === 'Zero Olive');
+    const threeOlive = results.filter(stock => stock.category === q);
 
     res.status(200).json({
       status: true,

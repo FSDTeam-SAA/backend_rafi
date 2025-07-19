@@ -10,6 +10,7 @@ symbol: { type: String},
 source : { type: String, },
 isPaid: { type: Boolean, default: false },
 // author: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+lang : {type: String}
 }, { timestamps: true });
 
 module.exports = mongoose.model('News', newsSchema);
