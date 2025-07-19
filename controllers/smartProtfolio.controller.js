@@ -669,25 +669,25 @@ exports.getPortfolioOverview = async (req, res) => {
             name: companyProfile.name || '',
             symbol: holding.symbol,
             shares: netQuantity,
-            avgBuyPrice,
-            costBasis: avgBuyPrice * netQuantity,
-            holdingPrice: avgBuyPrice.toFixed(2),
-            holdingGain: gainLossPercent.toFixed(2),
+            avgBuyPrice : avgBuyPrice || 0,
+            costBasis: avgBuyPrice * netQuantity || 0,
+            holdingPrice: parseFloat(avgBuyPrice) || 0,
+            holdingGain: parseFloat(gainLossPercent) || 0,
             price: quote.c,
-            preMarketPrice: parseFloat(preMarketPrice) || null,
-            preMarketChangePercent: parseFloat(preMarketChangePercent) ? parseFloat(preMarketChangePercent.toFixed(2)) : null,
+            preMarketPrice: parseFloat(preMarketPrice) || 0,
+            preMarketChangePercent: parseFloat(preMarketChangePercent) ? parseFloat(preMarketChangePercent.toFixed(2)) : 0,
             change: quote.d,
-            percent: quote.dp,
-            value: currentValue.toFixed(2),
-            unrealized: (currentValue - avgBuyPrice * netQuantity).toFixed(2),
-            pL: (((currentValue - avgBuyPrice * netQuantity) / (avgBuyPrice * netQuantity)) * 100).toFixed(2),
+            percent: quote.dp ,
+            value: currentValue || 0,
+            unrealized: (currentValue - avgBuyPrice * netQuantity) || 0,
+            pL: (((currentValue - avgBuyPrice * netQuantity) / (avgBuyPrice * netQuantity)) * 100) || 0,
             olives,
             quadrant: olive?.fair_value,
             oneMonthReturn,
             priceTarget: {
-              high: priceTarget.targetHigh || null,
-              low: priceTarget.targetLow || null,
-              mean: priceTarget.targetMean || null
+              high: priceTarget.targetHigh || 0,
+              low: priceTarget.targetLow || 0,
+              mean: priceTarget.targetMean || 0
             }
           };
         } catch (err) {
