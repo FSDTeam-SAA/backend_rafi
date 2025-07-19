@@ -216,7 +216,7 @@ if (parsed.type === 'news') {
 io.on('connection', async (socket) => {
   console.log('User connected:', socket.id);
 
-  const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT']; // Add your stock symbols here
+  const symbols = ['^GSPC', '^DJI', '^IXIC', '^RUT','^VIX','GC=F','^NYA']; // Add your stock symbols here
 
   // Fetch opening prices once at connection
   for (const symbol of symbols) {
