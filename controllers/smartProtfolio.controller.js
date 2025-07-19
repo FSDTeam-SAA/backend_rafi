@@ -584,7 +584,7 @@ exports.getPortfolioOverview = async (req, res) => {
             }
           });
 
-          if (netQuantity <= 0) return null;
+          // if (netQuantity <= 0) return null;
           const avgBuyPrice = totalCost / netQuantity;
 
           const [companyProfile, quote, candleData, olive, priceTarget, preMarketCandles] = await Promise.all([
