@@ -1631,7 +1631,7 @@ exports.getPortfolioDashboard = async (req, res) => {
             mostProfitable = {
               symbol: item.symbol,
               openDate: portfolio.createdAt,
-              gain: returnPct.toFixed(2),
+              gain: returnPct  || 0,
             };
             bestReturn = returnPct;
           }
@@ -1649,11 +1649,11 @@ exports.getPortfolioDashboard = async (req, res) => {
     );
 
     const filteredHoldings = holdingResults.filter(Boolean);
-    const totalReturn = (((currentValue - totalInvested) / totalInvested) * 100).toFixed(2);
+    const totalReturn = (((currentValue - totalInvested) / totalInvested) * 100) || 0;
 
     const oneMonthReturn = filteredHoldings.length > 0
-      ? (filteredHoldings.reduce((acc, h) => acc + h.returnPct, 0) / filteredHoldings.length).toFixed(2)
-      : '0.00';
+      ? (filteredHoldings.reduce((acc, h) => acc + h.returnPct, 0) / filteredHoldings.length)
+      : 0.00;
 
     let stockValue = 0;
     portfolio.stocks.forEach(stock => {
@@ -1675,7 +1675,7 @@ exports.getPortfolioDashboard = async (req, res) => {
 
         const currentPrice = currentQuote.data.c || 0;
         const stockVal = s.price * s.quantity;
-        const portfolioPercentage = totalValue > 0 ? ((stockVal / totalValue) * 100).toFixed(2) : '0.00';
+        const portfolioPercentage = totalValue > 0 ? ((stockVal / totalValue) * 100) : 0.00;
 
         const monthlyGains = {};
 
@@ -1702,7 +1702,7 @@ exports.getPortfolioDashboard = async (req, res) => {
         });
 
         const netGain = totalSell - totalBuy;
-        const gainPercent = totalBuy > 0 ? ((netGain / totalBuy) * 100).toFixed(2) : '0.00';
+        const gainPercent = totalBuy > 0 ? ((netGain / totalBuy) * 100) : 0.00;
 
         return {
           symbol: s.symbol,
@@ -1711,7 +1711,7 @@ exports.getPortfolioDashboard = async (req, res) => {
           sector: profile.finnhubIndustry,
           currentPrice,
           quantity: s.quantity,
-          holdingValue: stockVal.toFixed(2),
+          holdingValue: stockVal || 0,
           portfolioPercentage: `${portfolioPercentage}%`,
           transactions: s.transection?.length || 1,
           lastTransaction: s.transection?.slice(-1)[0]?.event || 'Open',
