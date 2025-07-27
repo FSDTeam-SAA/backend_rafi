@@ -317,21 +317,137 @@ exports.filterStocks = async (req, res) => {
 
 
 // Utility: format date to UNIX timestamps
-const getUnixTimeRange = () => {
-  const now = Math.floor(Date.now() / 1000);
-  const oneDayAgo = now - 60 * 60 * 60 * 6; // Last 6 hours for intraday (adjust as needed)
-  return { from: oneDayAgo, to: now };
+// const getUnixTimeRange = () => {
+//   const now = Math.floor(Date.now() / 1000);
+//   const oneDayAgo = now - 60 * 60 * 60 * 6; // Last 6 hours for intraday (adjust as needed)
+//   return { from: oneDayAgo, to: now };
+// };
+
+// Utility: format date to UNIX timestamps (last 5 years)
+const getUnixTimeRange = (range) => {
+  const now = Math.floor(Date.now() / 1000); // seconds
+  let from, resolution;
+
+  switch (range) {
+    case 'daily':
+      from = now - 60 * 60 * 24;
+      resolution = '5'; // 5-minute intervals
+      break;
+    case 'weekly':
+      from = now - 60 * 60 * 24 * 7;
+      resolution = '60'; // 30-minute intervals
+      break;
+    case 'monthly':
+      from = now - 60 * 60 * 24 * 30;
+      resolution = 'D'; // 1-hour intervals
+      break;
+    case 'yearly':
+      from = now - 60 * 60 * 24 * 365;
+      resolution = 'M'; // Daily
+      break;
+    case '5year':
+    default:
+      from = now - 60 * 60 * 24 * 365 * 5;
+      resolution = 'W'; // Weekly
+      break;
+  }
+
+  return { from, to: now, resolution };
 };
+
+// exports.getStockOverview = async (req, res) => {
+//   const symbol = req.query.symbol || 'AAPL';
+
+//   try {
+//     // 1. Company profile
+//     const companyProfile = await new Promise((resolve, reject) =>
+//       finnhubClient.companyProfile2({ symbol }, (err, data) => err ? reject(err) : resolve(data))
+//     );
+//     // console.log(companyProfile)
+
+//     // 2. Quote
+//     const quote = await new Promise((resolve, reject) =>
+//       finnhubClient.quote(symbol, (err, data) => err ? reject(err) : resolve(data))
+//     );
+
+//     // 3. Candlestick chart
+//     const { from, to } = getUnixTimeRange();
+//     const candlesRes = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
+//       params: {
+//         symbol,
+//         resolution: '5',
+//         from,
+//         to,
+//         token: process.env.FINHUB_API_KEY
+//       }
+//     });
+//     // console.log( candlesRes.data);
+
+//     const candles = candlesRes.data && candlesRes.data.s === 'ok'
+//       ? candlesRes.data.t.map((timestamp, i) => ({
+//         time: timestamp * 1000,
+//         open: candlesRes.data.o[i],
+//         close: candlesRes.data.c[i],
+//         high: candlesRes.data.h[i],
+//         low: candlesRes.data.l[i],
+//         volume: candlesRes.data.v[i]
+//       }))
+//       : [];
+
+//     // 4. Earnings
+//     // const earnings = await new Promise((resolve, reject) =>
+//     //     finnhubClient.earnings(symbol, (err, data) => err ? reject(err) : resolve(data))
+//     // );
+//     const earningsRes = await axios.get(`https://finnhub.io/api/v1/stock/earnings`, {
+//       params: {
+//         symbol,
+//         token: process.env.FINHUB_API_KEY
+//       }
+//     });
+
+//     const earningsData = (earningsRes.data || []).map(e => ({
+//       actual: e.actual,
+//       estimate: e.estimate,
+//       period: e.period,
+//       surprise: e.surprise
+//     }));
+
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         company: {
+//           name: companyProfile.name,
+//           symbol: companyProfile.ticker,
+//           exchange: companyProfile.exchange,
+//           logo: companyProfile.logo,
+//         },
+//         priceInfo: {
+//           currentPrice: quote.c,
+//           change: quote.d,
+//           percentChange: quote.dp
+//         },
+//         chart: candles,
+//         earnings: earningsData,
+//         actions: ['Price', 'Target', 'Cash Flow', 'Revenue', 'EPS', 'Earning'] // Optional UI buttons
+//       }
+//     });
+
+//   } catch (err) {
+//     console.error('Error in stock overview:', err.message);
+//     res.status(500).json({ error: 'Failed to fetch stock overview' });
+//   }
+// };
+
 
 exports.getStockOverview = async (req, res) => {
   const symbol = req.query.symbol || 'AAPL';
+  const range = req.query.range || '5year'; // 'daily', 'weekly', 'monthly', etc.
 
   try {
     // 1. Company profile
     const companyProfile = await new Promise((resolve, reject) =>
       finnhubClient.companyProfile2({ symbol }, (err, data) => err ? reject(err) : resolve(data))
     );
-    // console.log(companyProfile)
 
     // 2. Quote
     const quote = await new Promise((resolve, reject) =>
@@ -339,17 +455,16 @@ exports.getStockOverview = async (req, res) => {
     );
 
     // 3. Candlestick chart
-    const { from, to } = getUnixTimeRange();
+    const { from, to, resolution } = getUnixTimeRange(range);
     const candlesRes = await axios.get(`https://finnhub.io/api/v1/stock/candle`, {
       params: {
         symbol,
-        resolution: '5',
+        resolution,
         from,
         to,
         token: process.env.FINHUB_API_KEY
       }
     });
-    // console.log( candlesRes.data);
 
     const candles = candlesRes.data && candlesRes.data.s === 'ok'
       ? candlesRes.data.t.map((timestamp, i) => ({
@@ -363,9 +478,6 @@ exports.getStockOverview = async (req, res) => {
       : [];
 
     // 4. Earnings
-    // const earnings = await new Promise((resolve, reject) =>
-    //     finnhubClient.earnings(symbol, (err, data) => err ? reject(err) : resolve(data))
-    // );
     const earningsRes = await axios.get(`https://finnhub.io/api/v1/stock/earnings`, {
       params: {
         symbol,
@@ -396,7 +508,8 @@ exports.getStockOverview = async (req, res) => {
         },
         chart: candles,
         earnings: earningsData,
-        actions: ['Price', 'Target', 'Cash Flow', 'Revenue', 'EPS', 'Earning'] // Optional UI buttons
+        actions: ['Price', 'Target', 'Cash Flow', 'Revenue', 'EPS', 'Earning'],
+        usedRange: range
       }
     });
 
@@ -405,6 +518,7 @@ exports.getStockOverview = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch stock overview' });
   }
 };
+
 
 
 
