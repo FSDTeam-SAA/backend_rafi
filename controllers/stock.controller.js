@@ -329,23 +329,23 @@ const getUnixTimeRange = (range) => {
   let from, resolution;
 
   switch (range) {
-    case 'daily':
+    case 'Day':
       from = now - 60 * 60 * 24;
       resolution = '5'; // 5-minute intervals
       break;
-    case 'weekly':
+    case 'Week':
       from = now - 60 * 60 * 24 * 7;
       resolution = '60'; // 30-minute intervals
       break;
-    case 'monthly':
+    case 'Month':
       from = now - 60 * 60 * 24 * 30;
       resolution = 'D'; // 1-hour intervals
       break;
-    case 'yearly':
+    case 'Year':
       from = now - 60 * 60 * 24 * 365;
       resolution = 'M'; // Daily
       break;
-    case '5year':
+    case '5Year':
     default:
       from = now - 60 * 60 * 24 * 365 * 5;
       resolution = 'W'; // Weekly
