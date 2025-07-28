@@ -100,143 +100,143 @@ app.use('/api/v1/admin/stocks',qualityStcoks)
 
 
 
-// const FINNHUB_TOKEN = process.env.FINHUB_API_KEY; // Replace with your real key
+const FINNHUB_TOKEN = process.env.FINHUB_API_KEY; // Replace with your real key
 
-// // Map to store open prices
-// const openPrices = new Map();
+// Map to store open prices
+const openPrices = new Map();
 
-// // Create Finnhub WebSocket
-// // const finnhubSocket = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_TOKEN}`);
+// Create Finnhub WebSocket
+// const finnhubSocket = new WebSocket(`wss://ws.finnhub.io?token=${FINNHUB_TOKEN}`);
 
-// // // Subscribe to symbol updates
-// // const subscribeSymbol = (symbol) => {
-// //   finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
-// // };
-// // function sendSubscribeMessage(symbol){
-
-
-// //     finnhubSocket.send(JSON.stringify({ type: 'subscribe-news', symbol }));
-  
-// // }
-
-// // Get open price via REST API
-// const fetchOpenPrice = async (symbol) => {
-//   try {
-//     const { data } = await axios.get(`https://finnhub.io/api/v1/quote`, {
-//       params: { symbol, token: FINNHUB_TOKEN }
-//     });
-//         const { data:data2 } = await axios.get(`https://finnhub.io/api/v1/search`, {
-//       params: { q:symbol, token: FINNHUB_TOKEN }
-//     });
-//     // console.log(data, symbol)
-//     const profile = {
-//       pc: data.pc,
-//       // logo: data2.logo,
-//       name: data2?.result[0]?.description,
-//     }
-//     // console.log( data)
-//     if (data && data.pc) {
-//       openPrices.set(symbol, profile);
-//     }
-//     io.emit("stockUpdate",{
-//         symbol,
-//         currentPrice : data.c,
-//         change: data.d,
-//         percent: data.dp,
-//         // logo: data2.logo,
-//         name: data2.result[0].description,
-
-//     })
-//   } catch (err) {
-//     console.error(`Failed to fetch open price for ${symbol}:`, err.message);
-//   }
+// // Subscribe to symbol updates
+// const subscribeSymbol = (symbol) => {
+//   finnhubSocket.send(JSON.stringify({ type: 'subscribe', symbol }));
 // };
-
-// // console.log(finnhubSocket)
-// // WebSocket message from Finnhub
-// finnhubSocket.on('message', async (data) => {
-//   const parsed = JSON.parse(data);
-//   // console.log(parsed)
-//   if (parsed.type === 'trade') {
-//     parsed.data.forEach((trade) => {
-//       const symbol = trade.s;
-//       const currentPrice = trade.p;
-//       const openPrice = openPrices.get(symbol);
+// function sendSubscribeMessage(symbol){
 
 
-//       if (!openPrice) return;
-
-//       const change = (currentPrice - openPrice.pc).toFixed(2);
-//       const percent = ((change / openPrice.pc) * 100).toFixed(2);
-
-//       io.emit('stockUpdate', {
-//         symbol,
-//         currentPrice,
-//         change,
-//         percent,
-//         logo: openPrice.logo,
-//         name: openPrice.name
-//       });
-//     });
-//   }
-// if (parsed.type === 'news') {
-//   const newsArray = Array.isArray(parsed.data) ? parsed.data : [parsed.data]; // normalize to array
-//   // console.log("news", newsArray)
-
-
-//   // Loop over each news item and notify users
-//   for (const newsItem of newsArray) {
-//     const { headline, summary, url, datetime, source,related } = newsItem;
-//   const watchlists = await WatchList.find({ "stocks.symbol": related }).select("user");
-
-
-//     for (const watch of watchlists) {
-//       const userId = watch.user.toString();
-
-//       // Save notification to DB
-//       await notification.create({
-//         userId,
-//         message: headline,
-//         related: related,
-//         link: url,
-//         type: 'news'
-//       });
-
-//       // Emit news to frontend
-//       io.to(userId).emit("news", {
-//         related,
-//         news: newsItem
-//       });
-//     }
-//   }
+//     finnhubSocket.send(JSON.stringify({ type: 'subscribe-news', symbol }));
+  
 // }
-// });
 
-// // Socket.IO connection
-// io.on('connection', async (socket) => {
-//   console.log('User connected:', socket.id);
+// Get open price via REST API
+const fetchOpenPrice = async (symbol) => {
+  try {
+    const { data } = await axios.get(`https://finnhub.io/api/v1/quote`, {
+      params: { symbol, token: FINNHUB_TOKEN }
+    });
+        const { data:data2 } = await axios.get(`https://finnhub.io/api/v1/search`, {
+      params: { q:symbol, token: FINNHUB_TOKEN }
+    });
+    // console.log(data, symbol)
+    const profile = {
+      pc: data.pc,
+      // logo: data2.logo,
+      name: data2?.result[0]?.description,
+    }
+    // console.log( data)
+    if (data && data.pc) {
+      openPrices.set(symbol, profile);
+    }
+    io.emit("stockUpdate",{
+        symbol,
+        currentPrice : data.c,
+        change: data.d,
+        percent: data.dp,
+        // logo: data2.logo,
+        name: data2.result[0].description,
 
-//   const symbols = ['^GSPC', '^DJI', 'AAPL', '^RUT','TSLA','MSFT','META']; // Add your stock symbols here
+    })
+  } catch (err) {
+    console.error(`Failed to fetch open price for ${symbol}:`, err.message);
+  }
+};
 
-//   // Fetch opening prices once at connection
-//   for (const symbol of symbols) {
-//     console.log(symbol)
-//     await fetchOpenPrice(symbol);
-//     subscribeSymbol(symbol);
-//   }
-//   socket.on("joinRoom", (userId) => {
-//     if (userId) {
-//       socket.join(userId);
-//       console.log(`Client ${socket.id} joined user room: ${userId}`);
-//     }
-//   });
+// console.log(finnhubSocket)
+// WebSocket message from Finnhub
+finnhubSocket.on('message', async (data) => {
+  const parsed = JSON.parse(data);
+  // console.log(parsed)
+  if (parsed.type === 'trade') {
+    parsed.data.forEach((trade) => {
+      const symbol = trade.s;
+      const currentPrice = trade.p;
+      const openPrice = openPrices.get(symbol);
 
-//   socket.on('disconnect', () => {
-//     console.log('User disconnected:', socket.id);
-//   });
-// });
 
-// subscribeAllDistinctSymbols()
+      if (!openPrice) return;
+
+      const change = (currentPrice - openPrice.pc).toFixed(2);
+      const percent = ((change / openPrice.pc) * 100).toFixed(2);
+
+      io.emit('stockUpdate', {
+        symbol,
+        currentPrice,
+        change,
+        percent,
+        logo: openPrice.logo,
+        name: openPrice.name
+      });
+    });
+  }
+if (parsed.type === 'news') {
+  const newsArray = Array.isArray(parsed.data) ? parsed.data : [parsed.data]; // normalize to array
+  // console.log("news", newsArray)
+
+
+  // Loop over each news item and notify users
+  for (const newsItem of newsArray) {
+    const { headline, summary, url, datetime, source,related } = newsItem;
+  const watchlists = await WatchList.find({ "stocks.symbol": related }).select("user");
+
+
+    for (const watch of watchlists) {
+      const userId = watch.user.toString();
+
+      // Save notification to DB
+      await notification.create({
+        userId,
+        message: headline,
+        related: related,
+        link: url,
+        type: 'news'
+      });
+
+      // Emit news to frontend
+      io.to(userId).emit("news", {
+        related,
+        news: newsItem
+      });
+    }
+  }
+}
+});
+
+// Socket.IO connection
+io.on('connection', async (socket) => {
+  console.log('User connected:', socket.id);
+
+  const symbols = ['^GSPC', '^DJI', 'AAPL', '^RUT','TSLA','MSFT','META']; // Add your stock symbols here
+
+  // Fetch opening prices once at connection
+  for (const symbol of symbols) {
+    console.log(symbol)
+    await fetchOpenPrice(symbol);
+    subscribeSymbol(symbol);
+  }
+  socket.on("joinRoom", (userId) => {
+    if (userId) {
+      socket.join(userId);
+      console.log(`Client ${socket.id} joined user room: ${userId}`);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+subscribeAllDistinctSymbols()
 
 
 // Error handler middleware
