@@ -724,19 +724,44 @@ exports.getPortfolioOverview = async (req, res) => {
 };
 
 
+// exports.getTopMovers = async (req, res) => {
+//   const symbols = req.body.symbols;
+//   try {
+//     const results = await getQuotes(symbols);
+//     const sorted = results.sort((a, b) => b.dp - a.dp);
+//     res.status(200).json({
+//       topGainers: sorted.slice(0, 3),
+//       topLosers: sorted.slice(-3).reverse()
+//     });
+//   } catch (err) {
+//     res.status(500).json({ error: "Error fetching top movers", detail: err.message });
+//   }
+// };
+
 exports.getTopMovers = async (req, res) => {
   const symbols = req.body.symbols;
+
   try {
     const results = await getQuotes(symbols);
-    const sorted = results.sort((a, b) => b.dp - a.dp);
+
+    // Filter valid quotes with numeric dp
+    const validQuotes = results.filter(q => typeof q.dp === 'number' && !isNaN(q.dp));
+
+    // Separate gainers and losers
+    const gainers = validQuotes.filter(q => q.dp > 0).sort((a, b) => b.dp - a.dp);
+    const losers = validQuotes.filter(q => q.dp < 0).sort((a, b) => a.dp - b.dp); // more negative first
+
     res.status(200).json({
-      topGainers: sorted.slice(0, 3),
-      topLosers: sorted.slice(-3).reverse()
+      topGainers: gainers.slice(0, 3),
+      topLosers: losers.slice(0, 3)
     });
   } catch (err) {
     res.status(500).json({ error: "Error fetching top movers", detail: err.message });
   }
 };
+
+
+
 // Earnings Calendar
 exports.getEarningsCalendar = async (req, res) => {
   try {
