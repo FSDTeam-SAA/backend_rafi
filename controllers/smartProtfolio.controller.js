@@ -707,7 +707,7 @@ exports.getPortfolioOverview = async (req, res) => {
       : 0;
 
     res.status(200).json({
-      totalHoldings: totalValue.toFixed(2),
+      totalHoldings: Number(totalValue.toFixed(2)) || 0,
       cash,
       totalValueWithCash: Number((totalValue + cash).toFixed(2)) || 0,
       dailyReturn: Number(dailyChange.toFixed(2)) || 0,
