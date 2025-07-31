@@ -709,13 +709,13 @@ exports.getPortfolioOverview = async (req, res) => {
     res.status(200).json({
       totalHoldings: totalValue.toFixed(2),
       cash,
-      totalValueWithCash: (totalValue + cash).toFixed(2),
-      dailyReturn: dailyChange.toFixed(2),
-      dailyReturnPercent: ((dailyChange / totalValue) * 100).toFixed(2),
+      totalValueWithCash: Number((totalValue + cash).toFixed(2)) || 0,
+      dailyReturn: Number(dailyChange.toFixed(2)) || 0,
+      dailyReturnPercent: Number(((dailyChange / totalValue) * 100).toFixed(2)) || 0,
       monthlyReturnPercent: monthlyReturn,
       holdings: filteredHoldings,
-      unrealizedGains: unrealizedGains.toFixed(2),
-      overallReturnPercent: overallReturn.toFixed(2),
+      unrealizedGains: Number(unrealizedGains.toFixed(2)) || 0,
+      overallReturnPercent: Number(overallReturn.toFixed(2)) || 0,
     });
   } catch (err) {
     console.error("Portfolio overview error:", err);
