@@ -280,8 +280,8 @@ exports.filterStocks = async (req, res) => {
       // else if (greenCount === 2) category = 'Two Olive';//twoOlive
 
 
-      let category = 'oneOlive' ||'Zero Olive';//oneOlive
-      if (greenCount === 3) category = 'threeOlive'||'Three Olive';//threeOlive
+      let category = 'oneOlive' || 'Zero Olive';//oneOlive
+      if (greenCount === 3) category = 'threeOlive' || 'Three Olive';//threeOlive
       else if (greenCount === 2) category = 'twoOlive' || 'Two Olive';//twoOlive
 
       return {
@@ -1413,7 +1413,8 @@ exports.getQualityStocks = async (req, res) => {
 
       try {
         // Fetch data in parallel
-        const [profileRes, recRes, ptRes, candleRes] = await Promise.all([
+        const [quote, profileRes, recRes, ptRes, candleRes] = await Promise.all([
+          axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
           axios.get('https://finnhub.io/api/v1/stock/profile2', {
             params: { symbol, token: process.env.FINHUB_API_KEY },
           }),
@@ -1477,6 +1478,7 @@ exports.getQualityStocks = async (req, res) => {
             ? `$${Number(profile.marketCapitalization).toLocaleString()}`
             : '$0',
           oneMonthReturn: `${oneMonthReturn}%`,
+          currentPrice: quote.data.c,
           stockRating: recommendation.rating || 'N/A',
           analystTarget: `$${priceTarget.targetMean?.toFixed(2) || '0.00'} (${priceTarget.targetPercent?.toFixed(2) || '0.00'}%)`,
           ratingTrend: {
@@ -1518,7 +1520,8 @@ exports.oliveStcoksProfolio = async (req, res) => {
 
       try {
         // Fetch data in parallel
-        const [profileRes, recRes, ptRes, candleRes] = await Promise.all([
+        const [quote, profileRes, recRes, ptRes, candleRes] = await Promise.all([
+          axios.get(`https://finnhub.io/api/v1/quote?symbol=${symbol}&token=${process.env.FINHUB_API_KEY}`),
           axios.get('https://finnhub.io/api/v1/stock/profile2', {
             params: { symbol, token: process.env.FINHUB_API_KEY },
           }),
@@ -1570,13 +1573,14 @@ exports.oliveStcoksProfolio = async (req, res) => {
         const olives = {
           financialHealth: olive?.financial_health === "good" ? 'green' : 'gray',
           competitiveAdvantage: olive?.compatitive_advantage === "good" ? 'green' : 'gray',
-          valuation: quotePrice <= fairValue  ? 'green' : 'gray',
+          valuation: quotePrice <= fairValue ? 'green' : 'gray',
         };
 
         return {
           symbol,
           companyName: profile.name || '',
           logo: profile.logo || '',
+          currentPrice: quote.data.c,
           sector: profile.finnhubIndustry || 'N/A',
           marketCap: profile.marketCapitalization
             ? `$${Number(profile.marketCapitalization).toLocaleString()}`
