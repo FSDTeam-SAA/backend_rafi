@@ -75,6 +75,7 @@ const login = async (req, res) => {
           email: email,
           password: pass,
           profilePhoto,
+          fullName: name,
         })
 
         await sendMail(
