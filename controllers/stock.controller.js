@@ -334,7 +334,7 @@ const getUnixTimeRange = (range) => {
       resolution = '30'; // 5-minute intervals
       break;
     case 'Week':
-      from = now - 60 * 60 * 24 * 7;
+      from = now - 60 * 60 * 24 * 10;
       resolution = 'D'; // 30-minute intervals
       break;
     case 'Month':
