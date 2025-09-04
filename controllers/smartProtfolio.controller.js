@@ -1738,7 +1738,7 @@ exports.getPortfolioDashboard = async (req, res) => {
           quantity: s.quantity,
           holdingValue: stockVal || 0,
           portfolioPercentage: `${portfolioPercentage}%`,
-          transactions: s.transection?.length || 1,
+          transactions: (s.transection?.length - 1) || 0,
           lastTransaction: s.transection?.slice(-1)[0]?.event || 'Open',
           date: moment(s.addedAt || portfolio.createdAt).format('ll'),
           monthlyGains: gainPercent
