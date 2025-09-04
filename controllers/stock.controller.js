@@ -331,7 +331,7 @@ const getUnixTimeRange = (range) => {
   switch (range) {
     case 'Day':
       from = now - 60 * 60 * 24;
-      resolution = '5'; // 5-minute intervals
+      resolution = '30'; // 5-minute intervals
       break;
     case 'Week':
       from = now - 60 * 60 * 24 * 7;
@@ -339,7 +339,7 @@ const getUnixTimeRange = (range) => {
       break;
     case 'Month':
       from = now - 60 * 60 * 24 * 30;
-      resolution = 'D'; // 1-hour intervals
+      resolution = '5D'; // 1-hour intervals
       break;
     case 'Year':
       from = now - 60 * 60 * 24 * 365;
