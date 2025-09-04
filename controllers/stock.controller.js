@@ -339,7 +339,7 @@ const getUnixTimeRange = (range) => {
       break;
     case 'Month':
       from = now - 60 * 60 * 24 * 30;
-      resolution = '5D'; // 1-hour intervals
+      resolution = 'W'; // 1-hour intervals
       break;
     case 'Year':
       from = now - 60 * 60 * 24 * 365;
