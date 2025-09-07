@@ -992,14 +992,14 @@ exports.getAssetAllocation = async (req, res) => {
 
     // Asset Allocation: Only Stocks and Cash
     const assetAllocation = {
-      stocks: ((totalStockValue / totalValue) * 100).toFixed(2),
-      cash: ((cash / totalValue) * 100).toFixed(2)
+      stocks: ((totalStockValue / totalValue) * 100) || 0,
+      cash: ((cash / totalValue) * 100) || 0
     };
 
     // Sector chart breakdown
     const holdingsBySector = Object.entries(sectorBreakdown).map(([sector, value]) => ({
       sector,
-      percent: ((value / totalStockValue) * 100).toFixed(2)
+      percent: ((value / totalStockValue) * 100) || 0
     }));
 
     // Portfolio-level metrics
@@ -1739,6 +1739,7 @@ exports.getPortfolioDashboard = async (req, res) => {
           holdingValue: stockVal || 0,
           portfolioPercentage: `${portfolioPercentage}%`,
           transactions: (s.transection?.length - 1) || 0,
+          alltransection: s.transection,
           lastTransaction: s.transection?.slice(-1)[0]?.event || 'Open',
           date: moment(s.addedAt || portfolio.createdAt).format('ll'),
           monthlyGains: gainPercent
