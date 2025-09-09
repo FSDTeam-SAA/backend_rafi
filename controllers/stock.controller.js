@@ -329,10 +329,24 @@ const getUnixTimeRange = (range) => {
   let from, resolution;
 
   switch (range) {
-    case 'Day':
-      from = now - 60 * 60 * 24;
-      resolution = '30'; // 5-minute intervals
+    case 'Day': {
+      const now = Math.floor(Date.now() / 1000); // current timestamp in seconds
+
+      // Create a Date object for today
+      let start = new Date();
+      start.setHours(9, 30, 0, 0); // set to 9:30 AM today
+
+      // If now is earlier than 9:30 AM, shift start to yesterday's 9:30 AM
+      if (now < Math.floor(start.getTime() / 1000)) {
+        start.setDate(start.getDate() - 1);
+      }
+
+      // from = 24h before "now", but anchored at last 9:30 AM
+      let from = Math.floor(start.getTime() / 1000);
+
+      resolution = '30'; // 30-minute candles
       break;
+    }
     case 'Week':
       from = now - 60 * 60 * 24 * 10;
       resolution = 'D'; // 30-minute intervals
